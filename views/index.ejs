@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+        <%= locals.title || 'MasterAPI — Dashboard' %>
+    </title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Berkeley+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,400&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css" />
+    <style>
+        /* ─── Reset ─────────────────────────────────────────────── */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* ─── Tokens ─────────────────────────────────────────────── */
+        :root {
+            --font-sans: 'DM Sans', sans-serif;
+            --font-mono: 'Berkeley Mono', monospace;
+
+            --color-bg: #f5f4f1;
+            --color-surface: #ffffff;
+            --color-surface-2: #f5f4f1;
+
+            --color-border-soft: rgba(0, 0, 0, .08);
+            --color-border-mid: rgba(0, 0, 0, .14);
+
+            --color-text-1: #1a1a18;
+            --color-text-2: #5c5c58;
+            --color-text-3: #9a9a94;
+
+            --color-info-bg: #e6f1fb;
+            --color-info-text: #185fa5;
+            --color-success-bg: #eaf3de;
+            --color-success-text: #3b6d11;
+            --color-warning-bg: #faeeda;
+            --color-warning-text: #854f0b;
+            --color-danger-text: #a32d2d;
+
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --color-bg: #111110;
+                --color-surface: #1c1c1a;
+                --color-surface-2: #111110;
+
+                --color-border-soft: rgba(255, 255, 255, .07);
+                --color-border-mid: rgba(255, 255, 255, .13);
+
+                --color-text-1: #f0efe9;
+                --color-text-2: #9a9a94;
+                --color-text-3: #5c5c58;
+
+                --color-info-bg: #0c3052;
+                --color-info-text: #85b7eb;
+                --color-success-bg: #173404;
+                --color-success-text: #97c459;
+                --color-warning-bg: #412402;
+                --color-warning-text: #ef9f27;
+                --color-danger-text: #f09595;
+            }
+        }
+
+        /* ─── Base ───────────────────────────────────────────────── */
+        html,
+        body {
+            height: 100%;
+            background: var(--color-bg);
+            font-family: var(--font-sans);
+            color: var(--color-text-1);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        button {
+            font-family: var(--font-sans);
+            cursor: pointer;
+        }
+
+        /* ─── Shell ──────────────────────────────────────────────── */
+        .shell {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            height: 100vh;
+            min-height: 560px;
+        }
+
+        /* ─── Sidebar ────────────────────────────────────────────── */
+        .sb {
+            background: var(--color-surface);
+            border-right: 0.5px solid var(--color-border-soft);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sb-top {
+            padding: 18px 14px 14px;
+            border-bottom: 0.5px solid var(--color-border-soft);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+        }
+
+        .logo-mark {
+            width: 30px;
+            height: 30px;
+            background: var(--color-text-1);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .logo-mark i {
+            color: var(--color-surface);
+            font-size: 14px;
+        }
+
+        .logo-text {
+            font-size: 13.5px;
+            font-weight: 500;
+            color: var(--color-text-1);
+            letter-spacing: -.01em;
+        }
+
+        .logo-sub {
+            font-size: 10px;
+            color: var(--color-text-3);
+            font-family: var(--font-mono);
+            margin-top: 1px;
+        }
+
+        .sb-nav {
+            flex: 1;
+            padding: 10px 8px;
+            overflow: hidden;
+        }
+
+        .nav-label {
+            font-size: 9.5px;
+            font-weight: 500;
+            color: var(--color-text-3);
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            padding: 10px 8px 4px;
+        }
+
+        .nav-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 8px;
+            border-radius: var(--radius-sm);
+            font-size: 12.5px;
+            color: var(--color-text-2);
+            cursor: pointer;
+            transition: background .12s, color .12s;
+            margin-bottom: 1px;
+            text-decoration: none;
+        }
+
+        .nav-row:hover {
+            background: var(--color-surface-2);
+            color: var(--color-text-1);
+        }
+
+        .nav-row.on {
+            background: var(--color-surface-2);
+            color: var(--color-text-1);
+            font-weight: 500;
+        }
+
+        .nav-row i {
+            font-size: 14px;
+            width: 16px;
+            flex-shrink: 0;
+        }
+
+        .nav-pip {
+            width: 5px;
+            height: 5px;
+            background: var(--color-text-1);
+            border-radius: 50%;
+            margin-left: auto;
+        }
+
+        .sb-foot {
+            padding: 10px 8px 14px;
+            border-top: 0.5px solid var(--color-border-soft);
+        }
+
+        /* ─── Main ───────────────────────────────────────────────── */
+        .main {
+            display: flex;
+            flex-direction: column;
+            background: var(--color-surface-2);
+            overflow: hidden;
+        }
+
+        /* ─── Topbar ─────────────────────────────────────────────── */
+        .topbar {
+            background: var(--color-surface);
+            border-bottom: 0.5px solid var(--color-border-soft);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .page-title {
+            font-size: 14.5px;
+            font-weight: 500;
+            color: var(--color-text-1);
+        }
+
+        .page-sub {
+            font-size: 11px;
+            color: var(--color-text-3);
+            font-family: var(--font-mono);
+            margin-top: 1px;
+        }
+
+        .tbar-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 11.5px;
+            color: var(--color-success-text);
+            background: var(--color-success-bg);
+            padding: 4px 9px;
+            border-radius: 20px;
+        }
+
+        .status-dot {
+            width: 5px;
+            height: 5px;
+            background: currentColor;
+            border-radius: 50%;
+        }
+
+        .tbtn {
+            font-size: 12px;
+            padding: 5px 11px;
+            border: 0.5px solid var(--color-border-mid);
+            border-radius: var(--radius-sm);
+            background: var(--color-surface);
+            color: var(--color-text-1);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: background .12s;
+        }
+
+        .tbtn:hover {
+            background: var(--color-surface-2);
+        }
+
+        .tbtn.accent {
+            background: var(--color-text-1);
+            color: var(--color-surface);
+            border-color: var(--color-text-1);
+        }
+
+        .tbtn.accent:hover {
+            opacity: .85;
+        }
+
+        /* ─── Content ────────────────────────────────────────────── */
+        .content {
+            padding: 14px 18px;
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* ─── Stat Cards ─────────────────────────────────────────── */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .stat-card {
+            background: var(--color-surface);
+            border: 0.5px solid var(--color-border-soft);
+            border-radius: 10px;
+            padding: 14px 14px 12px;
+            cursor: pointer;
+            transition: border-color .15s;
+        }
+
+        .stat-card:hover {
+            border-color: var(--color-border-mid);
+        }
+
+        .stat-row1 {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .stat-ico {
+            width: 26px;
+            height: 26px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+        }
+
+        .stat-ico.b {
+            background: var(--color-info-bg);
+            color: var(--color-info-text);
+        }
+
+        .stat-ico.g {
+            background: var(--color-success-bg);
+            color: var(--color-success-text);
+        }
+
+        .stat-ico.a {
+            background: var(--color-warning-bg);
+            color: var(--color-warning-text);
+        }
+
+        .stat-ico.n {
+            background: var(--color-surface-2);
+            color: var(--color-text-2);
+        }
+
+        .trend {
+            font-size: 10.5px;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            font-family: var(--font-mono);
+        }
+
+        .trend.up {
+            color: var(--color-success-text);
+        }
+
+        .trend.dn {
+            color: var(--color-danger-text);
+        }
+
+        .trend.ne {
+            color: var(--color-text-3);
+        }
+
+        .stat-val {
+            font-size: 23px;
+            font-weight: 500;
+            color: var(--color-text-1);
+            line-height: 1;
+            letter-spacing: -.02em;
+        }
+
+        .stat-key {
+            font-size: 10.5px;
+            color: var(--color-text-3);
+            margin-top: 3px;
+        }
+
+        /* ─── Two-col Cards ──────────────────────────────────────── */
+        .cols {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .card {
+            background: var(--color-surface);
+            border: 0.5px solid var(--color-border-soft);
+            border-radius: 10px;
+            padding: 14px 16px;
+        }
+
+        .card-hd {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .card-title {
+            font-size: 12.5px;
+            font-weight: 500;
+            color: var(--color-text-1);
+        }
+
+        .card-link {
+            font-size: 11px;
+            color: var(--color-info-text);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            text-decoration: none;
+        }
+
+        /* ─── Activity Feed ──────────────────────────────────────── */
+        .feed-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 7px 0;
+            border-bottom: 0.5px solid var(--color-border-soft);
+        }
+
+        .feed-item:last-child {
+            border: none;
+            padding-bottom: 0;
+        }
+
+        .feed-left {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            padding-top: 2px;
+        }
+
+        .feed-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .feed-line {
+            width: 1px;
+            background: var(--color-border-soft);
+            flex: 1;
+            min-height: 12px;
+        }
+
+        .feed-item:last-child .feed-line {
+            display: none;
+        }
+
+        .feed-dot.g {
+            background: var(--color-success-text);
+        }
+
+        .feed-dot.b {
+            background: var(--color-info-text);
+        }
+
+        .feed-dot.a {
+            background: var(--color-warning-text);
+        }
+
+        .feed-text {
+            font-size: 12px;
+            color: var(--color-text-2);
+            line-height: 1.45;
+        }
+
+        .feed-code {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--color-text-1);
+        }
+
+        .feed-time {
+            font-size: 10.5px;
+            color: var(--color-text-3);
+            margin-top: 2px;
+            font-family: var(--font-mono);
+        }
+
+        /* ─── Quick Actions ──────────────────────────────────────── */
+        .action-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 10px;
+            border: 0.5px solid var(--color-border-soft);
+            border-radius: var(--radius-md);
+            font-size: 12.5px;
+            color: var(--color-text-2);
+            cursor: pointer;
+            transition: background .13s, border-color .13s, color .13s;
+            background: var(--color-surface);
+            margin-bottom: 7px;
+            width: 100%;
+            text-align: left;
+        }
+
+        .action-row:last-child {
+            margin: 0;
+        }
+
+        .action-row:hover {
+            background: var(--color-surface-2);
+            border-color: var(--color-border-mid);
+            color: var(--color-text-1);
+        }
+
+        .action-ico {
+            width: 28px;
+            height: 28px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+
+        .action-ico.p {
+            background: var(--color-info-bg);
+            color: var(--color-info-text);
+        }
+
+        .action-ico.t {
+            background: var(--color-success-bg);
+            color: var(--color-success-text);
+        }
+
+        .action-ico.o {
+            background: var(--color-warning-bg);
+            color: var(--color-warning-text);
+        }
+
+        .action-label {
+            flex: 1;
+        }
+
+        .action-arr {
+            font-size: 12px;
+            color: var(--color-text-3);
+        }
+
+        /* ─── Footer bar ─────────────────────────────────────────── */
+        .footbar {
+            background: var(--color-surface);
+            border-top: 0.5px solid var(--color-border-soft);
+            padding: 7px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .foot-mono {
+            font-size: 10.5px;
+            color: var(--color-text-3);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--font-mono);
+        }
+
+        .kbd {
+            background: var(--color-surface-2);
+            border: 0.5px solid var(--color-border-mid);
+            border-radius: 3px;
+            padding: 1px 5px;
+            font-size: 10px;
+            font-family: var(--font-mono);
+            color: var(--color-text-2);
+        }
+
+        .online {
+            color: var(--color-success-text);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="shell">
+
+        <!-- ── Sidebar ───────────────────────────────────────────── -->
+        <aside class="sb">
+            <div class="sb-top">
+                <div class="logo">
+                    <div class="logo-mark"><i class="ti ti-braces" aria-hidden="true"></i></div>
+                    <div>
+                        <div class="logo-text">MasterAPI</div>
+                        <div class="logo-sub">v<%= locals.appVersion || '1.0.0' %>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="sb-nav">
+                <div class="nav-label">Main</div>
+                <a href="/dashboard" class="nav-row on"><i class="ti ti-layout-dashboard"></i><span>Overview</span><span
+                        class="nav-pip"></span></a>
+                <a href="/tester" class="nav-row"><i class="ti ti-flask"></i><span>API Tester</span></a>
+
+                <div class="nav-label">Features</div>
+                <a href="/apps" class="nav-row"><i class="ti ti-key"></i><span>App Registration</span></a>
+                <a href="/storage" class="nav-row"><i class="ti ti-database"></i><span>Data Storage</span></a>
+
+                <div class="nav-label">Docs</div>
+                <a href="/reference" class="nav-row"><i class="ti ti-book-2"></i><span>API Reference</span></a>
+                <a href="/changelog" class="nav-row"><i class="ti ti-terminal-2"></i><span>Changelog</span></a>
+            </nav>
+
+            <div class="sb-foot">
+                <a href="/settings" class="nav-row"><i class="ti ti-settings"></i><span>Settings</span></a>
+            </div>
+        </aside>
+
+        <!-- ── Main ──────────────────────────────────────────────── -->
+        <div class="main">
+
+            <!-- Topbar -->
+            <div class="topbar">
+                <div>
+                    <div class="page-title">Dashboard overview</div>
+                    <div class="page-sub">
+                        <%= locals.currentDate || new Date().toLocaleDateString('en-GB', { weekday:'long',
+                            year:'numeric', month:'long', day:'numeric' }) %>
+                    </div>
+                </div>
+                <div class="tbar-right">
+                    <div class="status-pill">
+                        <span class="status-dot"></span>
+                        <%= locals.systemStatus || 'All systems operational' %>
+                    </div>
+                    <button class="tbtn"><i class="ti ti-filter" aria-hidden="true"></i> Filter</button>
+                    <button class="tbtn" id="apiKeyBtn" onclick="setApiKey()"><i class="ti ti-key"
+                            aria-hidden="true"></i> Set API key</button>
+                    <button class="tbtn accent" onclick="openNewApp()"><i class="ti ti-plus" aria-hidden="true"></i> New
+                        app</button>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="content">
+
+                <!-- Stat cards -->
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-row1">
+                            <div class="stat-ico b"><i class="ti ti-activity" aria-hidden="true"></i></div>
+                            <span class="trend up"><i class="ti ti-trending-up" aria-hidden="true"></i> +<%=
+                                    (locals.stats || {}).requestsTrend || 12 %>%</span>
+                        </div>
+                        <div class="stat-val">
+                            <%= (locals.stats || {}).requestsToday || 24 %>
+                        </div>
+                        <div class="stat-key">Requests today</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-row1">
+                            <div class="stat-ico g"><i class="ti ti-apps" aria-hidden="true"></i></div>
+                            <span class="trend up"><i class="ti ti-trending-up" aria-hidden="true"></i> +<%=
+                                    (locals.stats || {}).appsTrend || 2 %></span>
+                        </div>
+                        <div class="stat-val">
+                            <%= (locals.stats || {}).activeApps || 3 %>
+                        </div>
+                        <div class="stat-key">Active apps</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-row1">
+                            <div class="stat-ico a"><i class="ti ti-clock" aria-hidden="true"></i></div>
+                            <span class="trend ne">
+                                <%= (locals.stats || {}).uptimePeriod || '30 days' %>
+                            </span>
+                        </div>
+                        <div class="stat-val">
+                            <%= (locals.stats || {}).uptime || '100%' %>
+                        </div>
+                        <div class="stat-key">Uptime</div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-row1">
+                            <div class="stat-ico n"><i class="ti ti-table" aria-hidden="true"></i></div>
+                            <span class="trend dn"><i class="ti ti-trending-down" aria-hidden="true"></i> −<%=
+                                    (locals.stats || {}).dataItemsDelta || 3 %></span>
+                        </div>
+                        <div class="stat-val">
+                            <%= (locals.stats || {}).dataItems || 48 %>
+                        </div>
+                        <div class="stat-key">Data items</div>
+                    </div>
+                </div>
+
+                <!-- Two-column cards -->
+                <div class="cols">
+
+                    <!-- Activity feed -->
+                    <div class="card">
+                        <div class="card-hd">
+                            <span class="card-title">Recent activity</span>
+                            <a href="/activity" class="card-link">View all <i class="ti ti-arrow-right"
+                                    aria-hidden="true"></i></a>
+                        </div>
+
+                        <% if (locals.activity && locals.activity.length) { %>
+                            <% locals.activity.forEach(function(item) { %>
+                                <div class="feed-item">
+                                    <div class="feed-left">
+                                        <span class="feed-dot <%= item.color || 'b' %>"></span>
+                                        <span class="feed-line"></span>
+                                    </div>
+                                    <div>
+                                        <% if (item.isCode) { %>
+                                            <div class="feed-code">
+                                                <%= item.text %>
+                                            </div>
+                                            <% } else { %>
+                                                <div class="feed-text"><%- item.text %></div>
+                                                <% } %>
+                                                    <div class="feed-time">
+                                                        <%= item.time %>
+                                                    </div>
+                                    </div>
+                                </div>
+                                <% }); %>
+                                    <% } else { %>
+                                        <!-- Default/fallback activity items -->
+                                        <div class="feed-item">
+                                            <div class="feed-left"><span class="feed-dot g"></span><span
+                                                    class="feed-line"></span></div>
+                                            <div>
+                                                <div class="feed-text">App <span class="feed-code">"my-app"</span>
+                                                    registered</div>
+                                                <div class="feed-time">2 min ago</div>
+                                            </div>
+                                        </div>
+                                        <div class="feed-item">
+                                            <div class="feed-left"><span class="feed-dot b"></span><span
+                                                    class="feed-line"></span></div>
+                                            <div>
+                                                <div class="feed-text">5 items added to <span
+                                                        class="feed-code">"users"</span></div>
+                                                <div class="feed-time">14 min ago</div>
+                                            </div>
+                                        </div>
+                                        <div class="feed-item">
+                                            <div class="feed-left"><span class="feed-dot a"></span><span
+                                                    class="feed-line"></span></div>
+                                            <div>
+                                                <div class="feed-text">Updated <span class="feed-code">"settings"</span>
+                                                    collection</div>
+                                                <div class="feed-time">1 hr ago</div>
+                                            </div>
+                                        </div>
+                                        <div class="feed-item">
+                                            <div class="feed-left"><span class="feed-dot b"></span><span
+                                                    class="feed-line"></span></div>
+                                            <div>
+                                                <div class="feed-code">GET /api/data/products → 200</div>
+                                                <div class="feed-time">2 hr ago</div>
+                                            </div>
+                                        </div>
+                                        <% } %>
+                    </div>
+
+                    <!-- Quick actions -->
+                    <div class="card">
+                        <div class="card-hd">
+                            <span class="card-title">Quick actions</span>
+                        </div>
+
+                        <% if (locals.quickActions && locals.quickActions.length) { %>
+                            <% locals.quickActions.forEach(function(action) { %>
+                                <button class="action-row" onclick="window.location='<%= action.href %>'">
+                                    <div class="action-ico <%= action.color %>"><i class="ti ti-<%= action.icon %>"
+                                            aria-hidden="true"></i></div>
+                                    <span class="action-label">
+                                        <%= action.label %>
+                                    </span>
+                                    <span class="action-arr"><i class="ti ti-arrow-right" aria-hidden="true"></i></span>
+                                </button>
+                                <% }); %>
+                                    <% } else { %>
+                                        <!-- Default quick actions + CRUD helpers -->
+                                        <button class="action-row" onclick="window.location='/tester'">
+                                            <div class="action-ico p"><i class="ti ti-flask" aria-hidden="true"></i>
+                                            </div>
+                                            <span class="action-label">Test an endpoint</span>
+                                            <span class="action-arr"><i class="ti ti-arrow-right"
+                                                    aria-hidden="true"></i></span>
+                                        </button>
+                                        <button class="action-row" onclick="window.location='/apps/keys'">
+                                            <div class="action-ico t"><i class="ti ti-key" aria-hidden="true"></i></div>
+                                            <span class="action-label">Generate API key</span>
+                                            <span class="action-arr"><i class="ti ti-arrow-right"
+                                                    aria-hidden="true"></i></span>
+                                        </button>
+                                        <button class="action-row" onclick="window.location='/storage'">
+                                            <div class="action-ico o"><i class="ti ti-database" aria-hidden="true"></i>
+                                            </div>
+                                            <span class="action-label">Manage data storage</span>
+                                            <span class="action-arr"><i class="ti ti-arrow-right"
+                                                    aria-hidden="true"></i></span>
+                                        </button>
+
+                                        <!-- CRUD actions for quick testing (uses X-API-Key header or apiKey query param) -->
+                                        <button class="action-row" onclick="createDocument()">
+                                            <div class="action-ico p"><i class="ti ti-plus" aria-hidden="true"></i>
+                                            </div>
+                                            <span class="action-label">Create document (POST)</span>
+                                            <span class="action-arr"><i class="ti ti-arrow-right"
+                                                    aria-hidden="true"></i></span>
+                                        </button>
+                                        <button class="action-row" onclick="listDocuments()">
+                                            <div class="action-ico t"><i class="ti ti-list" aria-hidden="true"></i>
+                                            </div>
+                                            <span class="action-label">List documents (GET)</span>
+                                            <span class="action-arr"><i class="ti ti-arrow-right"
+                                                    aria-hidden="true"></i></span>
+                                        </button>
+                                        <button class="action-row" onclick="updateDocument()">
+                                            <div class="action-ico o"><i class="ti ti-edit" aria-hidden="true"></i>
+                                            </div>
+                                            <span class="action-label">Update document (PUT/PATCH)</span>
+                                            <span class="action-arr"><i class="ti ti-arrow-right"
+                                                    aria-hidden="true"></i></span>
+                                        </button>
+                                        <button class="action-row" onclick="deleteDocument()">
+                                            <div class="action-ico n"><i class="ti ti-trash" aria-hidden="true"></i>
+                                            </div>
+                                            <span class="action-label">Delete document (DELETE)</span>
+                                            <span class="action-arr"><i class="ti ti-arrow-right"
+                                                    aria-hidden="true"></i></span>
+                                        </button>
+                                        <% } %>
+                    </div>
+
+                </div>
+            </div><!-- /content -->
+
+            <!-- Footer bar -->
+            <div class="footbar">
+                <span class="foot-mono">
+                    <i class="ti ti-terminal-2" aria-hidden="true"></i>
+                    Console hidden · <span class="kbd">⌘ `</span> to toggle
+                </span>
+                <span class="foot-mono">
+                    v<%= locals.appVersion || '1.0.0' %> · <span class="online">● connected</span>
+                </span>
+            </div>
+
+        </div><!-- /main -->
+    </div><!-- /shell -->
+
+    <script>
+        // Store API key in localStorage for quick requests
+        function setApiKey() {
+            const current = localStorage.getItem('masterapi_api_key') || '';
+            const key = prompt('Enter app API key (X-API-Key):', current);
+            if (key !== null) {
+                if (key.trim() === '') localStorage.removeItem('masterapi_api_key');
+                else localStorage.setItem('masterapi_api_key', key.trim());
+                updateApiKeyButton();
+            }
+        }
+
+        function getApiKey() {
+            return localStorage.getItem('masterapi_api_key') || '';
+        }
+
+        function updateApiKeyButton() {
+            const btn = document.getElementById('apiKeyBtn');
+            const k = getApiKey();
+            if (!btn) return;
+            if (k) btn.textContent = 'API key set';
+            else btn.textContent = 'Set API key';
+        }
+
+        function openNewApp() {
+            window.location = '/apps';
+        }
+
+        async function apiFetch(method, path, body) {
+            const headers = { 'Content-Type': 'application/json' };
+            const apiKey = getApiKey();
+            if (apiKey) headers['x-api-key'] = apiKey;
+
+            const opts = { method, headers };
+            if (body) opts.body = JSON.stringify(body);
+
+            const res = await fetch(path, opts);
+            const text = await res.text();
+            try { return { ok: res.ok, status: res.status, json: JSON.parse(text) }; }
+            catch (e) { return { ok: res.ok, status: res.status, text }; }
+        }
+
+        async function createDocument() {
+            const collection = prompt('Collection name (e.g. users):');
+            if (!collection) return;
+            const raw = prompt('Document JSON body (e.g. {"name":"bob"}):', '{}');
+            try {
+                const body = JSON.parse(raw || '{}');
+                const r = await apiFetch('POST', `/data/${encodeURIComponent(collection)}`, body);
+                showResult(r);
+            } catch (e) {
+                alert('Invalid JSON: ' + e.message);
+            }
+        }
+
+        async function listDocuments() {
+            const collection = prompt('Collection name to list:');
+            if (!collection) return;
+            const limit = prompt('Limit (default 50):', '50');
+            const r = await apiFetch('GET', `/data/${encodeURIComponent(collection)}?limit=${encodeURIComponent(limit || 50)}`);
+            showResult(r);
+        }
+
+        async function updateDocument() {
+            const collection = prompt('Collection name:');
+            if (!collection) return;
+            const id = prompt('Document _id to update:');
+            if (!id) return;
+            const raw = prompt('New document JSON body (partial or full):', '{}');
+            try {
+                const body = JSON.parse(raw || '{}');
+                // Ask which method
+                const usePatch = confirm('Use PATCH (partial) ? OK = PATCH, Cancel = PUT (replace)');
+                const method = usePatch ? 'PATCH' : 'PUT';
+                const r = await apiFetch(method, `/data/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`, body);
+                showResult(r);
+            } catch (e) {
+                alert('Invalid JSON: ' + e.message);
+            }
+        }
+
+        async function deleteDocument() {
+            const collection = prompt('Collection name:');
+            if (!collection) return;
+            const id = prompt('Document _id to delete:');
+            if (!id) return;
+            if (!confirm(`Delete document ${id} from ${collection}?`)) return;
+            const r = await apiFetch('DELETE', `/data/${encodeURIComponent(collection)}/${encodeURIComponent(id)}`);
+            showResult(r);
+        }
+
+        function showResult(r) {
+            if (!r) return alert('No response');
+            if (r.json) alert(JSON.stringify({ status: r.status, body: r.json }, null, 2));
+            else alert(JSON.stringify({ status: r.status, body: r.text }, null, 2));
+        }
+
+        // initialize
+        updateApiKeyButton();
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,698 @@
+================================================================================
+                        MasterAPI - APPLICATION STRUCTURE
+                     Complete File Reference & Flow Documentation
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           APPLICATION ENTRY POINT                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+📄 index.js (228 lines)
+   ├─ Role: Main Express server bootstrap & orchestration hub
+   ├─ Responsibilities:
+   │  ├─ Loads environment variables (.env)
+   │  ├─ Initializes Express app with middleware stack
+   │  ├─ Configures EJS view engine for dynamic frontend
+   │  ├─ Sets up rate limiting (100 req/15min per IP)
+   │  ├─ Connects to MongoDB via config/db.js
+   │  ├─ Registers all route modules (/api/apps, /api/data, /api/ai, /api/databases)
+   │  ├─ Provides health check (/api/health) and info endpoints (/api/info)
+   │  ├─ Serves dynamic EJS frontend at root (/)
+   │  ├─ Handles 404 errors with available endpoint listing
+   │  └─ Centralized error handling for 500 errors
+   │
+   └─ Flow: Entry → Load Config → Connect DB → Mount Routes → Start Server
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         CONFIGURATION & UTILITIES                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+📁 config/
+   └─ db.js (75 lines)
+      ├─ Role: Centralized database connection manager
+      ├─ Exports: DatabaseManager class + connectDB function
+      ├─ Manages:
+      │  ├─ Main Mongoose connection to 'masterapi' database
+      │  ├─ Per-tenant MongoDB client connections (Map-based cache)
+      │  ├─ Connection lifecycle (create, retrieve, close)
+      │  └─ Graceful cleanup on shutdown
+      │
+      └─ Used by: index.js (main connection), controllers (tenant DBs)
+
+📁 utils/
+   ├─ document-processor.util.js
+   │  └─ Utility functions for processing documents (PDF/text extraction, etc.)
+   │
+   └─ test.js
+      └─ Utility test scripts or helpers
+
+📁 scripts/
+   └─ bundle-text.js (66 lines)
+      ├─ Role: Build tool to concatenate all source files
+      ├─ Process:
+      │  ├─ Recursively scans project (skips node_modules, .git)
+      │  ├─ Filters out binary files (.png, .mp3, etc.)
+      │  ├─ Minifies text content (removes comments, excess whitespace)
+      │  └─ Outputs single all-files.min.txt for documentation
+      │
+      └─ Usage: node scripts/bundle-text.js
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              DATA MODELS (MongoDB)                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+📁 models/
+   ├─ App.js (136 lines) ⭐ CORE MODEL
+   │  ├─ Schema: Registered client applications
+   │  ├─ Fields:
+   │  │  ├─ name (unique, max 100 chars)
+   │  │  ├─ description (max 500 chars)
+   │  │  ├─ apiKey (auto-generated, 64-char hex, unique)
+   │  │  ├─ isActive (boolean, default true)
+   │  │  ├─ rateLimit (requests per minute, per hour)
+   │  │  ├─ usage stats (totalRequests, lastRequest)
+   │  │  └─ timestamps (createdAt, updatedAt)
+   │  │
+   │  ├─ Methods:
+   │  │  ├─ generateApiKey() - Creates secure random key
+   │  │  ├─ recordRequest() - Increments usage counters
+   │  │  ├─ checkRateLimit() - Validates rate limit compliance
+   │  │  └─ deactivate() - Soft delete (sets isActive=false)
+   │  │
+   │  └─ Used by: routes/apps.js, middleware/auth.js
+   │
+   ├─ Database.js (98 lines)
+   │  ├─ Schema: Logical tenant database metadata
+   │  ├─ Fields:
+   │  │  ├─ name (unique, lowercase, [a-z0-9_] only)
+   │  │  ├─ description (max 500 chars)
+   │  │  ├─ appId (ref to App model)
+   │  │  ├─ isActive (boolean)
+   │  │  ├─ size (bytes, default 0)
+   │  │  ├─ collectionCount (default 0)
+   │  │  └─ timestamps
+   │  │
+   │  ├─ Methods:
+   │  │  ├─ updateStats() - Recalculates size & collection count
+   │  │  ├─ incrementCollectionCount() - Adds +1 to count
+   │  │  └─ markDeleted() - Soft delete
+   │  │
+   │  └─ Used by: controllers/databaseController.js, routes/database.js
+   │
+   ├─ Collection.js (64 lines)
+   │  ├─ Schema: Metadata about user collections
+   │  ├─ Fields:
+   │  │  ├─ databaseName (parent database)
+   │  │  ├─ name (collection name)
+   │  │  ├─ description
+   │  │  ├─ documentCount (default 0)
+   │  │  ├─ fields (Map<fieldName, fieldType>)
+   │  │  ├─ isActive (boolean)
+   │  │  └─ timestamps
+   │  │
+   │  ├─ Methods:
+   │  │  ├─ updateDocumentCount() - Syncs with actual Mongo collection
+   │  │  ├─ addField() - Registers new field in schema map
+   │  │  └─ inferSchema() - Auto-detects fields from documents
+   │  │
+   │  └─ Used by: controllers/collectionController.js
+   │
+   └─ AuditLog.js (23 lines)
+      ├─ Schema: Request/response audit trail
+      ├─ Fields:
+      │  ├─ method (GET, POST, etc.)
+      │  ├─ path (request URL)
+      │  ├─ statusCode (200, 404, 500, etc.)
+      │  ├─ durationMs (response time)
+      │  ├─ ip (client IP address)
+      │  ├─ appId (ref to App, if authenticated)
+      │  ├─ apiKey (key used)
+      │  ├─ changed (boolean, true for POST/PUT/DELETE)
+      │  ├─ requestBody (sanitized JSON)
+      │  ├─ responseBody (sanitized JSON)
+      │  ├─ error (error message if status >= 400)
+      │  ├─ meta (additional context, Map)
+      │  └─ timestamps
+      │
+      ├─ Indexes: (path, method, createdAt), (appId, createdAt), (changed, createdAt)
+      └─ Used by: middleware/audit.js (auto-logs all requests)
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          MIDDLEWARE (Request Pipeline)                        │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+📁 middleware/
+   ├─ auth.js (102 lines) ⭐ AUTHENTICATION
+   │  ├─ Purpose: API key validation & rate limiting
+   │  ├─ Methods:
+   │  │  ├─ authenticateApp(req, res, next)
+   │  │  │  ├─ Extracts API key from X-API-Key header or query param
+   │  │  │  ├─ Validates against App model (isActive=true)
+   │  │  │  ├─ Attaches req.authApp (app object)
+   │  │  │  └─ Returns 401 if invalid/missing
+   │  │  │
+   │  │  ├─ optionalAuth(req, res, next)
+   │  │  │  └─ Same as authenticateApp but doesn't block if no key
+   │  │  │
+   │  │  └─ checkRateLimit(req, res, next)
+   │  │     ├─ In-memory rate limit tracking (Map-based)
+   │  │     ├─ Enforces app.rateLimit.requestsPerMinute
+   │  │     └─ Returns 429 Too Many Requests if exceeded
+   │  │
+   │  └─ Usage: Applied to protected routes (data, databases)
+   │
+   └─ audit.js (69 lines) 🔍 REQUEST LOGGING
+      ├─ Purpose: Comprehensive request/response auditing
+      ├─ Captures:
+      │  ├─ Method, path, status code, duration
+      │  ├─ Client IP, API key, app ID
+      │  ├─ Request/response bodies (sanitized)
+      │  └─ Errors (for 4xx/5xx responses)
+      │
+      ├─ Process:
+      │  ├─ Wraps res.json() and res.send() to capture responses
+      │  ├─ Records timing (Date.now() before/after)
+      │  ├─ Saves AuditLog document to MongoDB on res.finish
+      │  └─ Sanitizes sensitive data (passwords, tokens)
+      │
+      └─ Applied: Globally in index.js (after JSON parsing, before routes)
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         CONTROLLERS (Business Logic)                          │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+📁 controllers/
+   ├─ databaseController.js (230 lines) 🗄️ DATABASE LIFECYCLE
+   │  ├─ Manages: Logical tenant databases
+   │  ├─ Methods:
+   │  │  ├─ createDatabase(req, res)
+   │  │  │  ├─ Validates name (unique, lowercase, [a-z0-9_])
+   │  │  │  ├─ Creates Database document in MongoDB
+   │  │  │  ├─ Returns database metadata
+   │  │  │  └─ Error: 409 if duplicate, 400 if invalid
+   │  │  │
+   │  │  ├─ listDatabases(req, res)
+   │  │  │  ├─ Fetches all active databases (isActive=true)
+   │  │  │  ├─ Populates app info if available
+   │  │  │  └─ Returns array with stats (size, collectionCount)
+   │  │  │
+   │  │  ├─ getDatabaseInfo(req, res)
+   │  │  │  ├─ Fetches single database by name
+   │  │  │  ├─ Aggregates live stats from Mongo
+   │  │  │  └─ Returns detailed metadata + collection list
+   │  │  │
+   │  │  ├─ updateDatabase(req, res)
+   │  │  │  └─ Updates description, refreshes stats
+   │  │  │
+   │  │  └─ deleteDatabase(req, res)
+   │  │     ├─ Soft delete (sets isActive=false)
+   │  │     ├─ Optionally hard delete (drops Mongo database)
+   │  │     └─ Cascades to child collections
+   │  │
+   │  └─ Used by: routes/database.js
+   │
+   ├─ collectionController.js (270 lines) 📦 COLLECTION MANAGEMENT
+   │  ├─ Manages: User-created collections within databases
+   │  ├─ Methods:
+   │  │  ├─ createCollection(req, res)
+   │  │  │  ├─ Validates parent database exists
+   │  │  │  ├─ Creates Collection metadata document
+   │  │  │  ├─ Creates actual MongoDB collection
+   │  │  │  └─ Updates parent database stats
+   │  │  │
+   │  │  ├─ listCollections(req, res)
+   │  │  │  ├─ Fetches collections for a database
+   │  │  │  ├─ Syncs documentCount with actual Mongo
+   │  │  │  └─ Returns array with field schemas
+   │  │  │
+   │  │  ├─ getCollectionInfo(req, res)
+   │  │  │  ├─ Fetches single collection metadata
+   │  │  │  ├─ Infers schema from documents
+   │  │  │  └─ Returns detailed stats + sample docs
+   │  │  │
+   │  │  ├─ updateCollection(req, res)
+   │  │  │  └─ Updates description, refreshes counts
+   │  │  │
+   │  │  ├─ deleteCollection(req, res)
+   │  │  │  ├─ Soft delete (sets isActive=false)
+   │  │  │  ├─ Optionally drops MongoDB collection
+   │  │  │  └─ Updates parent database stats
+   │  │  │
+   │  │  └─ insertDocument(req, res)
+   │  │     ├─ Inserts document into collection
+   │  │     ├─ Updates documentCount
+   │  │     └─ Auto-infers new fields
+   │  │
+   │  └─ Used by: routes/database.js (nested routes)
+   │
+   └─ taskController.js
+      └─ Task/job management (if implemented)
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         ROUTES (API Endpoints)                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+📁 routes/
+   ├─ apps.js (92 lines) 🔑 APP REGISTRATION & KEYS
+   │  ├─ Base: /api/apps
+   │  ├─ Endpoints:
+   │  │  ├─ POST /register
+   │  │  │  ├─ Body: { name, description? }
+   │  │  │  ├─ Creates new app with auto-generated API key
+   │  │  │  ├─ Stores in-memory (demo) OR MongoDB (production)
+   │  │  │  └─ Returns: { success, app: { id, name, apiKey } }
+   │  │  │
+   │  │  ├─ GET /
+   │  │  │  ├─ Lists all registered apps
+   │  │  │  └─ Returns: { success, apps: [...] }
+   │  │  │
+   │  │  ├─ GET /me
+   │  │  │  ├─ Requires: X-API-Key header
+   │  │  │  ├─ Returns current app info
+   │  │  │  └─ Used for: API key validation
+   │  │  │
+   │  │  └─ DELETE /:id
+   │  │     └─ Deactivates app (soft delete)
+   │  │
+   │  └─ Note: Currently uses in-memory store for demo; should use App model
+   │
+   ├─ data.js (181 lines) 📊 DATA CRUD OPERATIONS
+   │  ├─ Base: /api/data
+   │  ├─ Purpose: Generic key-value store per collection
+   │  ├─ Endpoints:
+   │  │  ├─ POST /:collection
+   │  │  │  ├─ Auth: Optional (Bearer token or API key)
+   │  │  │  ├─ Body: { any JSON data }
+   │  │  │  ├─ Auto-generates UUID for each item
+   │  │  │  ├─ Stores in-memory (demo) OR MongoDB collection
+   │  │  │  └─ Returns: { success, item: { id, ...data } }
+   │  │  │
+   │  │  ├─ GET /:collection
+   │  │  │  ├─ Lists all items in collection
+   │  │  │  ├─ Query params: ?limit=10&offset=0
+   │  │  │  └─ Returns: { success, items: [...], count }
+   │  │  │
+   │  │  ├─ GET /:collection/:id
+   │  │  │  ├─ Fetches single item by ID
+   │  │  │  └─ Returns: { success, item: {...} }
+   │  │  │
+   │  │  ├─ PUT /:collection/:id
+   │  │  │  ├─ Updates item (replaces entire document)
+   │  │  │  └─ Returns: { success, item: {...} }
+   │  │  │
+   │  │  ├─ PATCH /:collection/:id
+   │  │  │  ├─ Partial update (merges fields)
+   │  │  │  └─ Returns: { success, item: {...} }
+   │  │  │
+   │  │  └─ DELETE /:collection/:id
+   │  │     ├─ Removes item from collection
+   │  │     └─ Returns: { success, message }
+   │  │
+   │  └─ Note: Currently uses in-memory Map; should use MongoDB collections
+   │
+   ├─ database.js (routes for databaseController)
+   │  ├─ Base: /api/databases
+   │  ├─ Endpoints:
+   │  │  ├─ POST / → createDatabase
+   │  │  ├─ GET / → listDatabases
+   │  │  ├─ GET /:name → getDatabaseInfo
+   │  │  ├─ PUT /:name → updateDatabase
+   │  │  ├─ DELETE /:name → deleteDatabase
+   │  │  │
+   │  │  └─ Nested collection routes:
+   │  │     ├─ POST /:dbName/collections → createCollection
+   │  │     ├─ GET /:dbName/collections → listCollections
+   │  │     ├─ GET /:dbName/collections/:name → getCollectionInfo
+   │  │     ├─ PUT /:dbName/collections/:name → updateCollection
+   │  │     └─ DELETE /:dbName/collections/:name → deleteCollection
+   │  │
+   │  └─ Auth: Requires authenticateApp middleware
+   │
+   └─ ai.js (222 lines) 🤖 AI/ML PROXY ROUTES
+      ├─ Base: /api/ai
+      ├─ Purpose: Frontend for HuggingFace/OpenRouter AI services
+      ├─ Endpoints:
+      │  ├─ GET /models
+      │  │  ├─ Returns available AI models by type (text, image, audio)
+      │  │  └─ Response: { success, data: { text: [...], image: [...], audio: [...] } }
+      │  │
+      │  ├─ GET /models/:modelId
+      │  │  ├─ Returns detailed info about specific model
+      │  │  └─ Response: { success, data: { id, name, description, provider } }
+      │  │
+      │  ├─ POST /chat
+      │  │  ├─ Body: { model, messages: [{ role, content }] }
+      │  │  ├─ Proxies to OpenRouter chat completion
+      │  │  └─ Returns: { success, data: { response, usage } }
+      │  │
+      │  ├─ POST /complete
+      │  │  ├─ Body: { model, messages, type: 'text'|'image'|'audio' }
+      │  │  ├─ Unified endpoint for all AI tasks
+      │  │  ├─ Routes to appropriate service method
+      │  │  └─ Returns: { success, data: { text|image|audio, model, usage } }
+      │  │
+      │  ├─ POST /image
+      │  │  ├─ Body: { prompt, model? }
+      │  │  ├─ Generates image via HuggingFace
+      │  │  └─ Returns: { success, data: { image: base64, model } }
+      │  │
+      │  └─ POST /speech
+      │  │     ├─ Body: { text, model? }
+      │  │     ├─ Text-to-speech via HuggingFace
+      │  │     └─ Returns: { success, data: { audio: base64, model } }
+      │  │
+      └─ Depends on: services/huggingface.js
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           SERVICES (External APIs)                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+📁 services/
+   └─ huggingface.js (280 lines) 🧠 AI SERVICE WRAPPER
+      ├─ Purpose: Unified interface for HuggingFace & OpenRouter AI APIs
+      ├─ Clients:
+      │  ├─ OpenAI client (points to router.huggingface.co/v1)
+      │  └─ HfInference client (native HuggingFace inference)
+      │
+      ├─ Model Registry:
+      │  ├─ Text models (DeepSeek-R1, Llama, Mistral, etc.)
+      │  ├─ Image models (Stable Diffusion, FLUX, etc.)
+      │  └─ Audio models (Bark, MMS-TTS, etc.)
+      │
+      ├─ Methods:
+      │  ├─ getAvailableModels()
+      │  │  └─ Returns categorized model list with metadata
+      │  │
+      │  ├─ generateText(model, messages)
+      │  │  ├─ Uses OpenAI client for chat completion
+      │  │  ├─ Supports streaming (if enabled)
+      │  │  └─ Returns: { text, usage: { prompt_tokens, completion_tokens } }
+      │  │
+      │  ├─ generateImage(model, prompt)
+      │  │  ├─ Uses HfInference.textToImage()
+      │  │  ├─ Converts Blob to base64
+      │  │  └─ Returns: { image: base64String }
+      │  │
+      │  ├─ generateSpeech(model, text)
+      │  │  ├─ Uses HfInference.textToSpeech()
+      │  │  ├─ Converts audio to base64
+      │  │  └─ Returns: { audio: base64String }
+      │  │
+      │  └─ unified(model, input, type)
+      │     ├─ Smart dispatcher based on type
+      │     ├─ Routes to generateText/Image/Speech
+      │     └─ Handles errors gracefully (missing token, etc.)
+      │
+      └─ Configuration: Requires HF_TOKEN environment variable
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        FRONTEND (Views & Static Assets)                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+📁 views/
+   └─ index.ejs (3317 lines) 🎨 DYNAMIC FRONTEND
+      ├─ Purpose: Single-page app for MasterAPI dashboard
+      ├─ Rendered by: Express (res.render('index', { pageTitle, brandName, stats }))
+      ├─ Sections:
+      │  ├─ Overview (dashboard with stats cards)
+      │  ├─ API Tester (Postman-like interface with endpoint explorer)
+      │  ├─ App Registration (generate API keys)
+      │  ├─ Data Storage (collection CRUD)
+      │  └─ Documentation (API reference)
+      │
+      ├─ Features:
+      │  ├─ Responsive design (mobile, tablet, desktop, ultra-wide)
+      │  ├─ Material Design-inspired sidebar navigation
+      │  ├─ Interactive API tester with pre-filled endpoints
+      │  ├─ Question input (ask-the-app feature)
+      │  ├─ Syntax-highlighted JSON responses
+      │  └─ Real-time console logging
+      │
+      ├─ Dynamic Data:
+      │  ├─ <%= pageTitle %> (from env: PAGE_TITLE)
+      │  ├─ <%= brandName %> (from env: BRAND_NAME)
+      │  └─ <%= stats %> (dashboard stats: requests, apps, uptime, items)
+      │
+      └─ JavaScript Functions:
+         ├─ switchPage(pageId) - Navigation
+         ├─ registerApp() - POST /api/apps/register
+         ├─ sendRequest() - API tester HTTP client
+         ├─ loadEndpoint(preset) - Auto-fills tester with endpoint config
+         ├─ createData() - POST /api/data/:collection
+         ├─ listData() - GET /api/data/:collection
+         └─ testHealth() - GET /api/health
+
+📁 public/
+   └─ api.svg
+      └─ Logo/icon for the application (served statically)
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        TESTING & DEVELOPMENT TOOLS                            │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+📄 test-api.js (97 lines)
+   ├─ Purpose: Automated API integration tests
+   ├─ Uses: axios for HTTP requests
+   ├─ Test scenarios:
+   │  ├─ App registration
+   │  ├─ API key authentication
+   │  ├─ Database CRUD
+   │  ├─ Collection operations
+   │  ├─ Data storage/retrieval
+   │  └─ Error handling (401, 404, 409)
+   │
+   └─ Usage: node test-api.js (server must be running)
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          CONFIGURATION FILES                                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+📄 package.json
+   ├─ Dependencies:
+   │  ├─ express (web framework)
+   │  ├─ mongoose (MongoDB ODM)
+   │  ├─ mongodb (native driver)
+   │  ├─ ejs (templating engine)
+   │  ├─ dotenv (env variables)
+   │  ├─ cors (cross-origin requests)
+   │  ├─ express-rate-limit (rate limiting)
+   │  ├─ openai (OpenRouter client)
+   │  ├─ @huggingface/inference (HF client)
+   │  ├─ axios (HTTP client)
+   │  └─ uuid (unique ID generation)
+   │
+   └─ Scripts: (to be defined)
+
+📄 .env (environment variables)
+   ├─ MONGODB_URI - MongoDB connection string
+   ├─ PORT - Server port (default 3000)
+   ├─ HF_TOKEN - HuggingFace API token
+   ├─ BRAND_NAME - Application branding
+   ├─ PAGE_TITLE - Browser title
+   └─ STATS_* - Dashboard statistics (REQUESTS_TODAY, ACTIVE_APPS, etc.)
+
+📄 .gitignore
+   └─ Excludes: node_modules/, .env, logs/, *.log
+
+📄 README.md
+   └─ Project documentation, setup instructions, API reference
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         APPLICATION FLOW DIAGRAM                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+                        ┌─────────────────┐
+                        │   Client (Web)  │
+                        └────────┬────────┘
+                                 │
+                                 ▼
+                    ┌────────────────────────┐
+                    │   GET / (root route)   │
+                    │  index.js → render()   │
+                    └────────────────────────┘
+                                 │
+                                 ▼
+                    ┌────────────────────────┐
+                    │   views/index.ejs      │
+                    │  (Dynamic HTML + JS)   │
+                    └────────┬───────────────┘
+                             │
+                ┌────────────┴─────────────┐
+                │                          │
+                ▼                          ▼
+    ┌─────────────────────┐   ┌─────────────────────┐
+    │  User Interaction   │   │   Page Navigation   │
+    │  - Register app     │   │   - Overview        │
+    │  - Test API         │   │   - API Tester      │
+    │  - Create data      │   │   - Data Storage    │
+    └─────────┬───────────┘   └─────────────────────┘
+              │
+              ▼
+    ┌─────────────────────┐
+    │  API Request (AJAX) │
+    │  fetch/XMLHttpReq   │
+    └─────────┬───────────┘
+              │
+              ▼
+    ┌─────────────────────────────────────┐
+    │        index.js (Express)           │
+    │  1. Rate Limiting (100/15min)       │
+    │  2. CORS + JSON Parser              │
+    │  3. Audit Middleware (logs request) │
+    │  4. Route Matching                  │
+    └─────────┬───────────────────────────┘
+              │
+              ├──────────────┬──────────────┬──────────────┬──────────────┐
+              │              │              │              │              │
+              ▼              ▼              ▼              ▼              ▼
+    ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+    │ /api/apps   │ │ /api/data   │ │/api/databases│ │  /api/ai    │ │ /api/health │
+    │ routes/     │ │ routes/     │ │ routes/      │ │ routes/     │ │   (built-in)│
+    │ apps.js     │ │ data.js     │ │ database.js  │ │ ai.js       │ └─────────────┘
+    └──────┬──────┘ └──────┬──────┘ └──────┬───────┘ └──────┬──────┘
+           │               │               │                │
+           │               │               ▼                ▼
+           │               │     ┌──────────────────┐ ┌──────────────────┐
+           │               │     │  Auth Middleware │ │  AI Service      │
+           │               │     │  middleware/     │ │  services/       │
+           │               │     │  auth.js         │ │  huggingface.js  │
+           │               │     └────────┬─────────┘ └──────────────────┘
+           │               │              │
+           │               │              ▼
+           │               │     ┌──────────────────┐
+           │               │     │  Controllers     │
+           │               │     │  - database      │
+           │               │     │  - collection    │
+           │               │     └────────┬─────────┘
+           │               │              │
+           ▼               ▼              ▼
+    ┌──────────────────────────────────────────┐
+    │         MongoDB (via Mongoose)           │
+    │  - masterapi (main DB)                   │
+    │    ├─ apps (App model)                   │
+    │    ├─ auditlogs (AuditLog model)         │
+    │    ├─ databases (Database model)         │
+    │    └─ collections (Collection model)     │
+    │  - Tenant DBs (per-app isolation)        │
+    │    └─ User collections (dynamic)         │
+    └──────────────────┬───────────────────────┘
+                       │
+                       ▼
+              ┌─────────────────┐
+              │  Response (JSON)│
+              │  audit.js logs  │
+              └────────┬────────┘
+                       │
+                       ▼
+              ┌─────────────────┐
+              │  Client receives│
+              │  - Updates UI   │
+              │  - Shows results│
+              └─────────────────┘
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       KEY INTERACTION FLOWS                                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+🔑 APP REGISTRATION FLOW:
+   1. User enters app name in frontend (views/index.ejs)
+   2. AJAX POST to /api/apps/register (routes/apps.js)
+   3. Generates UUID + API key (crypto.randomBytes)
+   4. Stores in memory (demo) OR App.create() (production)
+   5. Returns apiKey to frontend
+   6. Frontend stores in localStorage, displays to user
+
+🔐 AUTHENTICATED REQUEST FLOW:
+   1. User includes X-API-Key header in request
+   2. Request hits auth.authenticateApp middleware
+   3. Validates key against App model (App.findOne({ apiKey }))
+   4. Checks isActive flag and rate limits
+   5. Attaches req.authApp object for controllers
+   6. Proceeds to route handler OR returns 401/429
+
+📊 DATA STORAGE FLOW:
+   1. User submits data to /api/data/:collection
+   2. validateApiKey middleware checks API key
+   3. Generates UUID for item
+   4. Stores in collections[collection] Map (demo)
+      OR inserts into MongoDB collection (production)
+   5. Triggers audit log via audit.js middleware
+   6. Returns { success, item } to frontend
+
+🤖 AI REQUEST FLOW:
+   1. Frontend sends POST to /api/ai/complete
+   2. routes/ai.js receives request
+   3. Calls hfService.generateText/Image/Speech
+   4. services/huggingface.js proxies to HuggingFace/OpenRouter
+   5. Handles response (converts blob to base64 for images/audio)
+   6. Returns formatted { success, data } to frontend
+   7. Frontend displays text, image, or audio player
+
+📈 AUDIT LOGGING FLOW (All Requests):
+   1. Request enters Express stack
+   2. audit.js middleware captures start time
+   3. Wraps res.json() and res.send() to intercept response
+   4. On res.finish event:
+      - Calculates duration (Date.now() - start)
+      - Extracts req/res data (sanitized)
+      - Creates AuditLog document
+      - Saves to MongoDB (async, doesn't block response)
+   5. Log available for analytics, debugging, compliance
+
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          DEVELOPMENT NOTES                                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+⚠️  DEMO vs PRODUCTION:
+   - routes/apps.js: Uses in-memory array (replace with App model)
+   - routes/data.js: Uses in-memory Map (replace with MongoDB collections)
+   - middleware/auth.js: In-memory rate limiting (use Redis in prod)
+
+🔒 SECURITY CONSIDERATIONS:
+   - API keys are 64-char hex (crypto.randomBytes) - very secure
+   - Rate limiting: 100 req/15min global + per-app limits
+   - Audit logs capture all requests for compliance
+   - Sanitization in audit.js prevents sensitive data leaks
+   - CORS enabled (configure allowed origins in production)
+
+🚀 SCALABILITY:
+   - Mongoose connection pooling (default 5 connections)
+   - Per-tenant database isolation via DatabaseManager
+   - Stateless design (API key auth, no sessions)
+   - Horizontally scalable (no in-memory state in production)
+
+🧪 TESTING:
+   - test-api.js covers integration tests
+   - Manual testing via frontend API tester
+   - Add unit tests for controllers/services (TODO)
+
+📊 MONITORING:
+   - AuditLog provides full request/response history
+   - Add metrics: response time percentiles, error rates
+   - Monitor MongoDB slow queries
+   - Track AI service usage/costs
+
+🔮 FUTURE ENHANCEMENTS:
+   - WebSocket support for real-time updates
+   - Batch operations (bulk insert/update)
+   - Query builder UI for data filtering
+   - AI model fine-tuning via frontend
+   - Advanced analytics dashboard
+   - Multi-region deployment
+
+
+================================================================================
+                              END OF DOCUMENTATION
+================================================================================
