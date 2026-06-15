@@ -2,6 +2,7 @@
   "name": "masterapi",
   "version": "1.0.0",
   "description": "Full-stack API service with data storage and AI capabilities",
+  "homepage": "https://kamogelomosiah-code.github.io/MasterAPI-main",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
@@ -10,7 +11,9 @@
     "bundle": "node scripts/bundleText.js",
     "test": "node test-api.js",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "predeploy": "echo 'Preparing frontend for GitHub Pages...'",
+    "deploy": "gh-pages -d public"
   },
   "keywords": [
     "api",
@@ -22,19 +25,20 @@
   "author": "Your Name",
   "license": "MIT",
   "dependencies": {
+    "@huggingface/inference": "^2.3.0",
     "axios": "^1.4.0",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "ejs": "^3.1.8",
     "express": "^4.18.2",
     "express-rate-limit": "^6.7.0",
-    "@huggingface/inference": "^2.3.0",
-    "mongoose": "^7.0.0",
     "mongodb": "^5.0.0",
+    "mongoose": "^7.0.0",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
     "eslint": "^8.0.0",
+    "gh-pages": "^6.3.0",
     "nodemon": "^2.0.22",
     "prettier": "^2.8.0"
   },
