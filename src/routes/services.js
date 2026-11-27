@@ -1,8 +1,7 @@
-// Small extra services: key-value settings, counters and AI text generation.
+// Small extra services: key-value settings and counters.
 const router = require('express').Router();
-const { ah, bad, notFound, ApiError } = require('../lib/errors');
+const { ah, bad, notFound } = require('../lib/errors');
 const { getStore, now } = require('../lib/store');
-const config = require('../config');
 
 const KEY = /^[A-Za-z0-9_.:-]{1,128}$/;
 const checkKey = (k) => {
@@ -55,26 +54,6 @@ router.post('/counters/:name/increment', ah(async (req, res) => {
 router.delete('/counters/:name', ah(async (req, res) => {
   await getStore().delete(ctr(req), { id: checkKey(req.params.name) });
   res.json({ deleted: true });
-}));
-
-// ---- AI: text generation through Hugging Face (needs HF_TOKEN) ----
-router.post('/ai/chat', ah(async (req, res) => {
-  if (!config.hfToken) throw new ApiError(503, 'AI is not configured. Set HF_TOKEN on the server.');
-  const { messages, prompt, system, model, maxTokens = 512, temperature = 0.7 } = req.body || {};
-  const msgs = Array.isArray(messages) ? messages : prompt ? [{ role: 'user', content: String(prompt) }] : null;
-  if (!msgs || !msgs.length) throw bad('Send { prompt } or { messages: [{ role, content }] }');
-  if (system) msgs.unshift({ role: 'system', content: String(system) });
-  const r = await fetch('https://router.huggingface.co/v1/chat/completions', {
-    method: 'POST',
-    headers: { authorization: `Bearer ${config.hfToken}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ model: model || config.hfModel, messages: msgs, max_tokens: Math.min(Number(maxTokens) || 512, 2048), temperature: Number(temperature) }),
-    signal: AbortSignal.timeout(60000),
-  }).catch((e) => {
-    throw new ApiError(502, `AI provider unreachable: ${e.message}`);
-  });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new ApiError(502, `AI provider error: ${j.error?.message || j.error || r.status}`);
-  res.json({ reply: j.choices?.[0]?.message?.content || '', model: j.model, usage: j.usage });
 }));
 
 module.exports = router;

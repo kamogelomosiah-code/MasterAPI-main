@@ -26,5 +26,11 @@ services:
         value: masterapi
       - key: CORS_ORIGINS      # your sites that call the API from a browser, comma-separated (or *)
         value: "*"
-      - key: HF_TOKEN          # optional, enables /api/v1/ai/chat
+      - key: HF_TOKEN          # AI chat: a Hugging Face token (huggingface.co/settings/tokens, "Read" is enough)
+        sync: false
+      - key: HF_MODEL          # optional: a model to try first. Defaults: Qwen/Qwen2.5-7B-Instruct, then meta-llama/Llama-3.2-3B-Instruct
+        sync: false
+      - key: RESEND_API_KEY    # contact mail: a Resend key (resend.com). Sends over HTTPS, so it works on Render's free plan
+        sync: false
+      - key: MAIL_TO           # where contact messages are emailed (use the email you signed up to Resend with)
         sync: false

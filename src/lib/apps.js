@@ -5,7 +5,7 @@ const { bad, notFound } = require('./errors');
 const config = require('../config');
 
 const NS = '_system:apps';
-const PUBLIC = ['id', 'name', 'description', 'keyPrefix', 'active', 'rateLimitPerMinute', 'allowedOrigins', 'webhookUrl', 'createdAt', 'updatedAt', 'lastUsedAt'];
+const PUBLIC = ['id', 'name', 'description', 'keyPrefix', 'active', 'rateLimitPerMinute', 'allowedOrigins', 'webhookUrl', 'contactEmail', 'createdAt', 'updatedAt', 'lastUsedAt'];
 const view = (a) => a && Object.fromEntries(PUBLIC.filter((k) => k in a).map((k) => [k, a[k]]));
 
 function checkFields(body, partial) {
@@ -26,6 +26,11 @@ function checkFields(body, partial) {
     if (!Array.isArray(body.allowedOrigins)) throw bad('allowedOrigins must be an array of origins');
     out.allowedOrigins = body.allowedOrigins.map(String).slice(0, 50);
   }
+  if ('contactEmail' in body) {
+    const e = String(body.contactEmail || '').trim();
+    if (e && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) throw bad('contactEmail must be a valid email address');
+    out.contactEmail = e;
+  }
   if ('webhookUrl' in body) {
     const u = String(body.webhookUrl || '');
     if (u && !/^https?:\/\//i.test(u)) throw bad('webhookUrl must start with http:// or https://');
@@ -44,6 +49,7 @@ async function createApp(body) {
     rateLimitPerMinute: config.defaultRateLimitPerMinute,
     allowedOrigins: [],
     webhookUrl: '',
+    contactEmail: '',
     ...fields,
     keyHash: hash,
     keyPrefix: prefix,

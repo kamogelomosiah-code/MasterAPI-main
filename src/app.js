@@ -25,11 +25,21 @@ function createApp() {
 
   // Public
   app.get('/api/health', async (req, res) => {
+    const ai = require('./lib/ai'), mail = require('./lib/mail');
+    const info = {
+      version: config.version,
+      storage: getStore().kind,
+      persistent: getStore().kind === 'mongodb',
+      services: { ai: { configured: ai.enabled(), models: ai.enabled() ? config.hfModels : [] }, mail: { configured: mail.enabled() } },
+      warnings: config.warnings,
+      uptime: Math.round(process.uptime()),
+      time: new Date().toISOString(),
+    };
     try {
       await getStore().ping();
-      res.json({ status: 'ok', storage: getStore().kind, uptime: Math.round(process.uptime()), time: new Date().toISOString() });
+      res.json({ status: 'ok', ...info });
     } catch (e) {
-      res.status(503).json({ status: 'error', storage: getStore().kind, error: 'Database unreachable' });
+      res.status(503).json({ status: 'error', ...info, error: 'Database unreachable' });
     }
   });
   app.get('/api', (req, res) => res.json(require('./docs')));
@@ -45,6 +55,8 @@ function createApp() {
   v1.use('/data', require('./routes/data'));
   v1.use('/auth', require('./routes/users'));
   v1.use('/', require('./routes/services'));
+  v1.use('/', require('./routes/ai'));
+  v1.use('/', require('./routes/mail'));
   app.use('/api/v1', v1);
   // Old paths keep working for existing clients.
   app.use('/api/data', requireApp, require('./routes/data'));

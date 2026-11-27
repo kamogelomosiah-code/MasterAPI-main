@@ -16,8 +16,26 @@ const config = {
   /** Comma-separated list of allowed browser origins, or * for any. */
   corsOrigins: (env.CORS_ORIGINS || '*').split(',').map((s) => s.trim()).filter(Boolean),
   defaultRateLimitPerMinute: Number(env.RATE_LIMIT_PER_MINUTE) || 120,
+  version: require('../package.json').version,
+
+  // --- AI service (Hugging Face) ---
   hfToken: env.HF_TOKEN || '',
-  hfModel: env.HF_MODEL || 'Qwen/Qwen2.5-7B-Instruct',
+  hfUrl: env.HF_API_URL || 'https://router.huggingface.co/v1/chat/completions',
+  /** Models tried in order: HF_MODEL first, then HF_MODELS (comma-separated), then these defaults. */
+  hfModels: [env.HF_MODEL, ...(env.HF_MODELS || '').split(','), 'Qwen/Qwen2.5-7B-Instruct', 'meta-llama/Llama-3.2-3B-Instruct']
+    .map((m) => (m || '').trim()).filter((m, i, all) => m && all.indexOf(m) === i),
+  hfTimeoutMs: Number(env.HF_TIMEOUT_MS) || 25000,
+  /** Total time one chat request may take across all models. */
+  aiDeadlineMs: Number(env.AI_DEADLINE_MS) || 55000,
+  aiPerMinute: Number(env.AI_PER_MINUTE) || 20,
+
+  // --- Mail service (Resend, over HTTPS: works on Render's free plan, which blocks SMTP) ---
+  resendKey: env.RESEND_API_KEY || '',
+  resendUrl: env.RESEND_API_URL || 'https://api.resend.com/emails',
+  mailFrom: env.MAIL_FROM || 'MasterAPI <onboarding@resend.dev>',
+  /** Where contact messages are emailed unless an app has its own contactEmail. */
+  mailTo: env.MAIL_TO || '',
+  mailPerHour: Number(env.MAIL_PER_HOUR) || 30,
 };
 
 if (config.nodeEnv === 'production') {
@@ -27,6 +45,12 @@ if (config.nodeEnv === 'production') {
       process.exit(1);
     }
   }
+}
+// Data in a file disappears when a host like Render restarts. Say so loudly instead of failing quietly.
+config.warnings = [];
+if (config.nodeEnv === 'production' && !config.mongoUri) {
+  config.warnings.push('MONGODB_URI is not set: data is kept in a file and will be LOST when the server restarts.');
+  console.error(`⚠️  ${config.warnings[0]}`);
 }
 if (!config.tokenSecret) {
   config.tokenSecret = require('crypto').randomBytes(32).toString('hex');

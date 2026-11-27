@@ -13,19 +13,17 @@ Storage is MongoDB when `MONGODB_URI` is set, otherwise a JSON file (for local d
 
 ## Where this project is now (27 Nov 2026)
 
-**Status: working backend, v2.** Suggested GitHub name: `masterapi`.
+**Status: v3, the one backend for all my apps.** Suggested GitHub name: `masterapi`.
 
 | | |
 |---|---|
-| **Works and tested** | Admin console (`/`), one-page tester (`/try`), per-app API keys, data CRUD with filters/paging/bulk, user accounts, key-value store, counters, signed webhooks, rate limits, cross-site (CORS) calls |
-| **Tests** | 20 automated end-to-end tests (`npm test`) on the JSON-file store, plus browser runs of the console and tester page |
-| **Not yet verified** | Saving to **MongoDB Atlas** (no database was reachable while building; `TEST_MONGODB_URI=… npm test` runs the same tests against one). The AI chat route (needs `HF_TOKEN`). A live Render deployment |
-| **Ready to deploy** | `render.yaml` is in the repo (see "Deploy on Render" below) |
+| **Services** | **Data** (CRUD on any collection) · **Accounts** (sign-up / log-in per app) · **Settings & counters** · **AI chat** (Hugging Face models with fallbacks) · **Contact mail** (saved, then emailed) · **Webhooks** |
+| **Works and tested** | 37 automated end-to-end tests (`npm test`) on the file store. AI and mail are tested against stand-ins for Hugging Face and the email provider: model fallback, slow and refused models, input checks, per-app limits, escaped email, provider failures, and the "not configured" cases. The console and `/try` were checked in a browser |
+| **Not yet verified** | Saving to **MongoDB Atlas**, the **real Hugging Face** service (which models your token can use), the **real email provider**, and a live Render deployment. None of these can be reached from where this was built |
+| **Used by** | The portfolio (chat, contact form, profile and admin passcode, guestbook, visit counter) and the household budget app (sync) |
+| **Next** | Connect the stock manager (real accounts and shared stock), the realtime chat (message history) and the video site |
 
-**Used by:** the portfolio (contact messages, goals, a visit counter and guestbook) and the household budget app (settings sync).
-**Not connected yet:** the video site (Elysian), which still uses its own MongoDB.
-
-**Next:** run the tests against Atlas, deploy to Render, then point the portfolio and budget app at the live address.
+**Health:** `/api/health` says honestly whether storage is persistent and whether AI and mail are configured. The console shows the same.
 
 ## Run it
 
@@ -47,7 +45,9 @@ The repo has a `render.yaml`, so Render sets most of it up for you:
 3. Render generates `MASTER_KEY` and `TOKEN_SECRET` itself. Open the service → **Environment** and copy `MASTER_KEY`: it is your sign-in for the console.
 4. When the deploy is live, open the service URL and sign in.
 
-`CORS_ORIGINS` is `*` by default. Change it to your sites (comma-separated) once you know them. Add `HF_TOKEN` if you want the AI chat endpoint. In production the server refuses to start without `MASTER_KEY` and `TOKEN_SECRET`, and it won't fall back to file storage if MongoDB is unreachable. Check `/api/health`: it should say `"storage":"mongodb"`.
+5. For AI chat, add `HF_TOKEN`. For contact mail, add `RESEND_API_KEY` and `MAIL_TO`. The console's status line shows what is on.
+
+`CORS_ORIGINS` is `*` by default. Change it to your sites (comma-separated) once you know them. In production the server refuses to start without `MASTER_KEY` and `TOKEN_SECRET`, and refuses to start if `MONGODB_URI` is set but unreachable. If `MONGODB_URI` is not set at all, it still runs but keeps data in a file that is **lost on every restart**: it warns in the logs and `/api/health` shows `"persistent": false`. When it is set up properly, `/api/health` says `"storage":"mongodb"`.
 
 The free plan sleeps after 15 minutes of no traffic, so the first request afterwards takes about 30 seconds.
 
@@ -129,14 +129,33 @@ Every document gets `id`, `createdAt` and `updatedAt`. When a logged-in user cre
 
 Passwords need at least 8 characters with a letter and a number, and are hashed with scrypt. After 10 failed logins, that email is locked out for 15 minutes. Tokens last 7 days by default. Each app's users and tokens are separate.
 
-### Key-value, counters, AI
+### Key-value and counters
 
 ```
 GET/PUT/DELETE /kv/:key        PUT body: { "value": anything }
 GET /kv?prefix=feature.
 GET /counters/:name            POST /counters/:name/increment  { "by": 1 }
-POST /ai/chat                  { "prompt": "…" } or { "messages": [...], "system": "…" }
 ```
+
+### AI chat
+
+```bash
+curl -X POST $API/api/v1/ai/chat -H "X-API-Key: $KEY" -H "Content-Type: application/json" \
+  -d '{"system":"You are a friendly assistant for my shop.","history":[...],"prompt":"Do you ship abroad?"}'
+# → { "reply": "…", "model": "Qwen/Qwen2.5-7B-Instruct", "ms": 1800 }
+```
+
+Send `prompt` (or a `messages` list), an optional `system` prompt and earlier turns in `history`. The server tries the models in order (`HF_MODEL`, `HF_MODELS`, then `Qwen/Qwen2.5-7B-Instruct` and `meta-llama/Llama-3.2-3B-Instruct`) and returns the first answer. A model that is missing, slow (25 s) or failing is skipped; a refused token stops at once with a clear message. One request never takes longer than 55 s. Each app gets 20 chats a minute. Only this server holds the Hugging Face token, so your apps never need it. `GET /ai/status` shows whether AI is on and which models are in use.
+
+### Contact mail
+
+```bash
+curl -X POST $API/api/v1/mail/contact -H "X-API-Key: $KEY" -H "Content-Type: application/json" \
+  -d '{"name":"Jo","email":"jo@example.com","subject":"Hello","message":"Nice site"}'
+# → { "ok": true, "saved": true, "emailed": true }
+```
+
+The message is **always saved** (collection `contact_messages`) and then emailed to the app's contact address (set it in the console, or use `MAIL_TO` for all apps). If the email provider fails you still get `saved: true`, `emailed: false` and a `note`. The email escapes whatever the visitor typed. It sends through Resend over HTTPS, because Render's free plan blocks SMTP. Each app is limited to 30 messages an hour.
 
 ### Webhooks
 

@@ -17,7 +17,7 @@ router.get('/apps/:id', ah(async (req, res) => {
   const store = getStore();
   const collections = (await store.namespaces(`app:${app.id}:`)).map((ns) => ns.split(':')[2]).filter((c) => !c.startsWith('_'));
   const usage = await store.find('_system:usage', { appId: app.id }, { sort: [['day', -1]], limit: 30 });
-  res.json({ data: { ...apps.view(app), webhookSecret: app.webhookSecret, collections, usage: usage.map((u) => ({ day: u.day, requests: u.requests })) } });
+  res.json({ data: { ...apps.view(app), webhookSecret: app.webhookSecret, collections, usage: usage.map((u) => ({ day: u.day, requests: u.requests, aiChats: u.aiChats || 0 })) } });
 }));
 router.patch('/apps/:id', ah(async (req, res) => res.json({ data: await apps.updateApp(req.params.id, req.body || {}) })));
 router.post('/apps/:id/rotate-key', ah(async (req, res) => {

@@ -1,6 +1,6 @@
 {
   "name": "masterapi",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "One backend for all your apps: CRUD, user accounts, key-value, counters, webhooks and AI",
   "main": "index.js",
   "scripts": {

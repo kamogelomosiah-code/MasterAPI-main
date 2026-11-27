@@ -1,8 +1,8 @@
 // Machine-readable endpoint list served at GET /api/docs.
 module.exports = {
   name: 'MasterAPI',
-  version: '2.0.0',
-  description: 'One backend for all your apps: data CRUD, user accounts, key-value storage, counters, webhooks and AI.',
+  version: '3.0.0',
+  description: 'One backend for all your apps: data CRUD, user accounts, key-value storage, counters, webhooks, AI chat and a contact-mail service.',
   auth: {
     apps: 'Send your app key in the X-API-Key header on every /api/v1 request.',
     users: 'After /api/v1/auth/login, also send Authorization: Bearer <token> to act as that user.',
@@ -36,7 +36,11 @@ module.exports = {
     ],
     keyValue: ['GET /api/v1/kv ?prefix', 'GET /api/v1/kv/:key', 'PUT /api/v1/kv/:key {value}', 'DELETE /api/v1/kv/:key'],
     counters: ['GET /api/v1/counters', 'GET /api/v1/counters/:name', 'POST /api/v1/counters/:name/increment {by?}', 'DELETE /api/v1/counters/:name'],
-    ai: ['POST /api/v1/ai/chat {prompt | messages, system?, model?, maxTokens?, temperature?}'],
+    ai: [
+      'GET /api/v1/ai/status — is AI on, and which models',
+      'POST /api/v1/ai/chat {prompt | messages, system?, history?, model?, maxTokens?, temperature?} → {reply, model} — tries several Hugging Face models in order',
+    ],
+    mail: ['POST /api/v1/mail/contact {name, email, subject?, message} — saves the message (collection contact_messages) and emails the app\'s contact address'],
   },
   webhooks: 'Set webhookUrl on an app to receive POSTs on document.created / updated / deleted. Verify X-MasterAPI-Signature = HMAC-SHA256(body, webhookSecret).',
 };
