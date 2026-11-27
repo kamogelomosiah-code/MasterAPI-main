@@ -214,6 +214,26 @@ test('admin can act as an app with the master key', async () => {
   assert.equal(missing.status, 404);
 });
 
+test('other sites can call the API with a key (CORS preflight + request)', async () => {
+  const fresh = (await call('POST', '/api/admin/apps', { key: null, admin: true, body: { name: 'Cross-site' } })).body.apiKey;
+  const pre = await fetch(base + '/api/v1/data/items', {
+    method: 'OPTIONS',
+    headers: { origin: 'https://other-site.example', 'access-control-request-method': 'POST', 'access-control-request-headers': 'x-api-key,content-type' },
+  });
+  assert.ok(pre.status < 300, `preflight status ${pre.status}`);
+  assert.match(pre.headers.get('access-control-allow-headers') || '', /x-api-key/i);
+  await fetch(base + '/api/v1/data/items', { method: 'POST', headers: { 'x-api-key': fresh, 'content-type': 'application/json', origin: 'https://other-site.example' }, body: '{"a":1}' });
+  const r = await fetch(base + '/api/v1/data/items?limit=1', { headers: { 'x-api-key': fresh, origin: 'https://other-site.example' } });
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get('access-control-allow-origin'), 'https://other-site.example');
+});
+
+test('the one-page tester is served', async () => {
+  const r = await fetch(base + '/try');
+  assert.equal(r.status, 200);
+  assert.match(await r.text(), /Try <span>MasterAPI/);
+});
+
 test('rate limit per app', async () => {
   const a = await call('POST', '/api/admin/apps', { key: null, admin: true, body: { name: 'Tiny', rateLimitPerMinute: 3 } });
   const k = a.body.apiKey;
