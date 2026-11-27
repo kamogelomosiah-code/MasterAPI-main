@@ -2,13 +2,11 @@
   "name": "masterapi",
   "version": "2.0.0",
   "description": "One backend for all your apps: CRUD, user accounts, key-value, counters, webhooks and AI",
-  "homepage": "https://kamogelomosiah-code.github.io/MasterAPI-main",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "test": "node --test test/*.test.js",
-    "deploy": "gh-pages -d public"
+    "test": "node --test test/*.test.js"
   },
   "keywords": [
     "api",
@@ -25,9 +23,7 @@
     "express": "^4.21.2",
     "mongodb": "^6.12.0"
   },
-  "devDependencies": {
-    "gh-pages": "^6.3.0"
-  },
+  "devDependencies": {},
   "engines": {
     "node": ">=18.0.0"
   }

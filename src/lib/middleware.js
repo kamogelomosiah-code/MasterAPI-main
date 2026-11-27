@@ -1,5 +1,5 @@
 const config = require('../config');
-const { findByKey } = require('./apps');
+const { findByKey, getApp } = require('./apps');
 const { safeEqual, verifyToken } = require('./security');
 const { getStore, now } = require('./store');
 const { ah, unauthorized, forbidden, ApiError } = require('./errors');
@@ -27,6 +27,13 @@ function rateLimited(app) {
 
 /** App routes: X-API-Key header (or ?apiKey= for quick testing). Sets req.app_ */
 const requireApp = ah(async (req, res, next) => {
+  // The admin console can act as any app: X-Master-Key + X-App-Id (no app key needed).
+  const mk = req.get('x-master-key');
+  if (mk && req.get('x-app-id')) {
+    if (!config.masterKey || !safeEqual(mk, config.masterKey)) throw unauthorized('Invalid master key');
+    req.client = await getApp(req.get('x-app-id'));
+    return next();
+  }
   const key = req.get('x-api-key') || req.query.apiKey;
   if (!key) throw unauthorized('API key required. Send it in the X-API-Key header.');
   const app = await findByKey(String(key));

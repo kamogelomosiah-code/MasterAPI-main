@@ -3,70 +3,398 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MasterAPI</title>
+<title>MasterAPI Console</title>
 <link rel="icon" href="api.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#0f1115; --card:#171a21; --text:#e6e8ee; --muted:#9aa3b2; --accent:#f59e0b; --line:#262b36; }
+  :root { --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a303c; --text:#e8eaf0; --muted:#98a1b3; --accent:#f59e0b; --accent-ink:#1a1304; --ok:#22c55e; --bad:#ef4444; }
   * { box-sizing:border-box }
-  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif }
-  main { max-width:880px; margin:0 auto; padding:48px 16px 64px }
-  h1 { font-size:2.4rem; margin:0 0 8px } h1 span { color:var(--accent) }
-  h2 { margin:40px 0 12px; font-size:1.25rem }
-  p { color:var(--muted); margin:0 0 12px }
-  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-top:24px }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px }
-  .card b { display:block; margin-bottom:4px }
-  .card p { font-size:.9rem; margin:0 }
-  pre { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; overflow-x:auto; font-size:.85rem; line-height:1.5 }
-  code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:#fcd34d }
-  pre code { color:var(--text) }
+  html, body { margin:0 }
+  body { background:var(--bg); color:var(--text); font:15px/1.55 'Poppins', system-ui, sans-serif }
+  button, input, select, textarea { font:inherit; color:inherit }
+  h1, h2, h3 { margin:0; font-weight:600 }
+  .hidden { display:none !important }
   a { color:var(--accent) }
-  #status { display:inline-flex; align-items:center; gap:8px; font-size:.85rem; color:var(--muted); margin-top:8px }
-  #dot { width:8px; height:8px; border-radius:50%; background:#6b7280 }
+
+  /* Layout */
+  .app { display:grid; grid-template-columns:210px 1fr; min-height:100vh }
+  nav { background:var(--panel); border-right:1px solid var(--line); padding:20px 12px; display:flex; flex-direction:column; gap:4px; position:sticky; top:0; height:100vh }
+  .brand { font-size:1.15rem; font-weight:600; padding:0 10px 16px } .brand span { color:var(--accent) }
+  nav button { text-align:left; background:none; border:0; padding:10px 12px; border-radius:10px; color:var(--muted); cursor:pointer }
+  nav button:hover { background:var(--panel2); color:var(--text) }
+  nav button.on { background:var(--panel2); color:var(--accent) }
+  nav .sp { flex:1 }
+  nav .status { font-size:.78rem; color:var(--muted); padding:8px 12px; display:flex; align-items:center; gap:8px }
+  .dot { width:8px; height:8px; border-radius:50%; background:#6b7280; flex:none }
+  main { padding:28px clamp(16px,4vw,40px) 80px; min-width:0; max-width:1100px }
+  .top { display:flex; flex-wrap:wrap; gap:12px; align-items:end; justify-content:space-between; margin-bottom:20px }
+  .top p { margin:2px 0 0; color:var(--muted); font-size:.9rem }
+
+  /* Controls */
+  .btn { background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:8px 14px; cursor:pointer; white-space:nowrap }
+  .btn:hover { border-color:var(--accent) }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); font-weight:500 }
+  .btn.danger { color:var(--bad) } .btn.danger:hover { border-color:var(--bad) }
+  .btn.small { padding:4px 10px; font-size:.82rem }
+  .btn:disabled { opacity:.5; cursor:default }
+  input, select, textarea { background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:9px 12px; width:100%; min-width:0 }
+  input:focus, select:focus, textarea:focus { outline:2px solid var(--accent); outline-offset:-1px; border-color:transparent }
+  textarea { font-family:ui-monospace, Menlo, Consolas, monospace; font-size:.85rem; line-height:1.5; resize:vertical }
+  label { display:block; font-size:.82rem; color:var(--muted); margin-bottom:4px }
+  .row { display:flex; flex-wrap:wrap; gap:10px; align-items:end }
+  .row > * { flex:1 1 160px } .row > .btn { flex:0 0 auto }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px }
+  .card h3 { font-size:1rem; margin-bottom:10px }
+  .muted { color:var(--muted); font-size:.88rem }
+  .tag { display:inline-block; padding:1px 9px; border-radius:99px; font-size:.75rem; background:var(--panel2); border:1px solid var(--line) }
+  .tag.ok { color:var(--ok); border-color:#1d5e36 } .tag.off { color:var(--bad); border-color:#6b2222 }
+  .list { display:flex; flex-direction:column; gap:10px }
+  .item { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between }
+  .item .info { min-width:0; flex:1 1 220px } .item .info b { display:block; overflow-wrap:anywhere }
+  .actions { display:flex; flex-wrap:wrap; gap:6px }
+  pre { margin:0; font:.82rem/1.5 ui-monospace, Menlo, Consolas, monospace; white-space:pre-wrap; overflow-wrap:anywhere; max-height:260px; overflow:auto; flex:1 1 100%; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px }
+  .chips button { background:var(--panel); border:1px solid var(--line); border-radius:99px; padding:5px 14px; cursor:pointer }
+  .chips button.on { border-color:var(--accent); color:var(--accent) }
+  .empty { text-align:center; color:var(--muted); padding:36px 12px; border:1px dashed var(--line); border-radius:14px }
+  .pager { display:flex; gap:10px; align-items:center; justify-content:center; margin-top:14px }
+
+  /* Login + dialog + toast */
+  .login { min-height:100vh; display:grid; place-items:center; padding:16px }
+  .login .card { width:100%; max-width:420px; padding:28px }
+  .login h1 { font-size:1.6rem; margin-bottom:6px } .login h1 span { color:var(--accent) }
+  dialog { background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:16px; padding:22px; width:min(560px, calc(100vw - 32px)) }
+  dialog::backdrop { background:rgba(0,0,0,.6) }
+  dialog h3 { margin-bottom:12px } dialog .row { margin-top:14px; justify-content:flex-end }
+  .secret { background:var(--bg); border:1px dashed var(--accent); border-radius:10px; padding:12px; font:.85rem ui-monospace, Menlo, monospace; overflow-wrap:anywhere; margin:10px 0 }
+  #toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:10px 18px; z-index:50; max-width:calc(100vw - 32px) }
+  #toast.err { border-color:var(--bad); color:#fecaca }
+
+  @media (max-width:760px) {
+    .app { grid-template-columns:1fr }
+    nav { position:static; height:auto; flex-direction:row; flex-wrap:wrap; padding:10px; border-right:0; border-bottom:1px solid var(--line) }
+    .brand { padding:6px 10px; width:100% } nav .sp, nav .status { display:none }
+  }
 </style>
 </head>
 <body>
-<main>
-  <h1>Master<span>API</span></h1>
-  <p>One backend for all my apps — data, user accounts, settings, counters, webhooks and AI, behind a single API key per app.</p>
-  <div id="status"><span id="dot"></span><span id="st">Checking server…</span></div>
 
-  <div class="grid">
-    <div class="card"><b>Data CRUD</b><p>Any collection, filters, sorting, paging, bulk create / update / delete.</p></div>
-    <div class="card"><b>User accounts</b><p>Sign up, log in, profiles and password changes for each app's users.</p></div>
-    <div class="card"><b>Key-value</b><p>Store settings, feature flags or any JSON by key.</p></div>
-    <div class="card"><b>Counters</b><p>Page views, likes, downloads — atomic increments.</p></div>
-    <div class="card"><b>Webhooks</b><p>Signed POSTs to your app when its data changes.</p></div>
-    <div class="card"><b>AI</b><p>Text generation through Hugging Face.</p></div>
-  </div>
+<!-- Sign in -->
+<div id="login" class="login hidden">
+  <form class="card" id="loginForm">
+    <h1>Master<span>API</span></h1>
+    <p class="muted" style="margin:0 0 18px">Enter your admin key (the <code>MASTER_KEY</code> set on the server).</p>
+    <label for="mk">Master key</label>
+    <input id="mk" type="password" autocomplete="current-password" required>
+    <p id="loginErr" class="muted" style="color:var(--bad);min-height:1.4em;margin:8px 0"></p>
+    <button class="btn primary" style="width:100%" id="loginBtn">Sign in</button>
+    <p class="muted" style="margin:14px 0 0;font-size:.8rem">The key is kept in this tab only and is forgotten when you close it.</p>
+  </form>
+</div>
 
-  <h2>Quick start</h2>
-  <pre><code># 1. Create an app (admin, once)
-curl -X POST $API/api/admin/apps -H "Authorization: Bearer $MASTER_KEY" \
-  -H "Content-Type: application/json" -d '{"name":"My shop"}'
-# → { "apiKey": "mk_live_…" }   save it, it's shown once
+<!-- Console -->
+<div id="app" class="app hidden">
+  <nav>
+    <div class="brand">Master<span>API</span></div>
+    <button data-tab="apps" class="on">Apps</button>
+    <button data-tab="data">Data</button>
+    <button data-tab="users">Users</button>
+    <button data-tab="settings">Settings &amp; counters</button>
+    <div class="sp"></div>
+    <div class="status"><span class="dot" id="dot"></span><span id="st">Checking…</span></div>
+    <button id="docs">API reference ↗</button>
+    <button id="logout">Sign out</button>
+  </nav>
+  <main>
+    <section id="tab-apps"></section>
+    <section id="tab-data" class="hidden"></section>
+    <section id="tab-users" class="hidden"></section>
+    <section id="tab-settings" class="hidden"></section>
+  </main>
+</div>
 
-# 2. Use it from your app
-curl -X POST $API/api/v1/data/products -H "X-API-Key: mk_live_…" \
-  -H "Content-Type: application/json" -d '{"name":"Pen","price":10}'
-curl "$API/api/v1/data/products?price=10&sort=-createdAt&limit=20" -H "X-API-Key: mk_live_…"</code></pre>
+<dialog id="dlg"></dialog>
+<div id="toast" class="hidden"></div>
 
-  <h2>From JavaScript</h2>
-  <pre><code>const api = (path, opts = {}) =&gt; fetch(`${API}/api/v1${path}`, {
-  ...opts,
-  headers: { "X-API-Key": KEY, "Content-Type": "application/json", ...opts.headers },
-}).then((r) =&gt; r.json());
-
-await api("/data/todos", { method: "POST", body: JSON.stringify({ text: "Ship it" }) });
-const { data } = await api("/data/todos?done=false");</code></pre>
-
-  <p>Full endpoint list: <a href="/api/docs">/api/docs</a> · Health: <a href="/api/health">/api/health</a></p>
-</main>
 <script>
-  fetch('/api/health').then(r => r.json()).then(h => {
-    document.getElementById('dot').style.background = h.status === 'ok' ? '#22c55e' : '#ef4444';
-    document.getElementById('st').textContent = h.status === 'ok' ? `Online · storage: ${h.storage}` : 'Database unreachable';
-  }).catch(() => { document.getElementById('st').textContent = 'Static preview — server not running here'; });
+'use strict';
+// ---------- tiny helpers (everything is built with textContent, so stored data can never inject HTML) ----------
+const $ = (s, r = document) => r.querySelector(s);
+function h(tag, attrs = {}, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') el.className = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+    else if (v === true) el.setAttribute(k, '');
+    else if (v !== false && v != null) el.setAttribute(k, v);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid.nodeType ? kid : document.createTextNode(kid));
+  return el;
+}
+const clear = (el) => { el.replaceChildren(); return el; };
+let toastTimer;
+function toast(msg, err) {
+  const t = $('#toast');
+  t.textContent = msg; t.className = err ? 'err' : '';
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.add('hidden'), err ? 6000 : 2500);
+}
+const fmtDate = (s) => (s ? new Date(s).toLocaleString() : '');
+
+// ---------- API ----------
+const state = { key: '', apps: [], appId: '', collection: '', tab: 'apps' };
+try { state.key = sessionStorage.getItem('mk') || ''; state.appId = sessionStorage.getItem('app') || ''; } catch {}
+
+async function request(path, { method = 'GET', body, app } = {}) {
+  const headers = { 'X-Master-Key': state.key };
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (app) headers['X-App-Id'] = state.appId;
+  const r = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    if (r.status === 401 && path.startsWith('/api/admin')) signOut();
+    throw new Error(data.error || `Request failed (${r.status})`);
+  }
+  return data;
+}
+const admin = (p, o) => request('/api/admin' + p, o);
+const appApi = (p, o) => {
+  if (!state.appId) throw new Error('Choose an app first');
+  return request('/api/v1' + p, { ...o, app: true });
+};
+async function run(fn, ok) {
+  try { const r = await fn(); if (ok) toast(ok); return r; } catch (e) { toast(e.message, true); }
+}
+
+// ---------- dialogs ----------
+function dialog(title, content, buttons) {
+  const d = $('#dlg');
+  clear(d).append(h('h3', {}, title), content, h('div', { class: 'row' }, buttons.map((b) =>
+    h('button', { class: 'btn ' + (b.cls || ''), type: 'button', onclick: async () => { if ((await b.run?.()) !== false) d.close(); } }, b.label))));
+  d.showModal();
+}
+const confirmBox = (title, text, label, run) => dialog(title, h('p', { class: 'muted' }, text), [{ label: 'Cancel' }, { label, cls: 'danger', run }]);
+const showSecret = (title, note, secret) => dialog(title, h('div', {}, h('p', { class: 'muted' }, note), h('div', { class: 'secret' }, secret)),
+  [{ label: 'Copy', run: async () => { try { await navigator.clipboard.writeText(secret); toast('Copied'); } catch { toast('Select and copy it by hand', true); } return false; } }, { label: 'Done', cls: 'primary' }]);
+
+// ---------- layout ----------
+function header(title, sub, ...right) {
+  return h('div', { class: 'top' }, h('div', {}, h('h2', {}, title), sub && h('p', {}, sub)), h('div', { class: 'row', style: 'flex:0 1 auto' }, right));
+}
+function appPicker(onchange) {
+  const sel = h('select', { 'aria-label': 'App', onchange: (e) => { setApp(e.target.value); onchange(); } },
+    state.apps.length ? state.apps.map((a) => h('option', { value: a.id, selected: a.id === state.appId }, a.name + (a.active ? '' : ' (disabled)'))) : h('option', {}, 'No apps yet'));
+  return h('div', { style: 'min-width:200px' }, h('label', {}, 'App'), sel);
+}
+function setApp(id) { state.appId = id; state.collection = ''; try { sessionStorage.setItem('app', id); } catch {} }
+const noApps = () => h('div', { class: 'empty' }, 'Create an app first (Apps tab).');
+
+function show(tab) {
+  state.tab = tab;
+  for (const b of document.querySelectorAll('nav [data-tab]')) b.classList.toggle('on', b.dataset.tab === tab);
+  for (const s of document.querySelectorAll('main > section')) s.classList.toggle('hidden', s.id !== 'tab-' + tab);
+  ({ apps: renderApps, data: renderData, users: renderUsers, settings: renderSettings })[tab]();
+}
+
+async function loadApps() {
+  state.apps = (await admin('/apps')).data;
+  if (!state.apps.some((a) => a.id === state.appId)) setApp(state.apps[0]?.id || '');
+}
+
+// ---------- Apps ----------
+async function renderApps() {
+  const root = clear($('#tab-apps'));
+  await run(loadApps);
+  const name = h('input', { id: 'newName', placeholder: 'e.g. My shop', maxlength: 80 });
+  const origins = h('input', { placeholder: 'https://mysite.com, https://other.com (optional)' });
+  const hook = h('input', { placeholder: 'https://… (optional)' });
+  const create = async () => {
+    const r = await run(() => admin('/apps', { method: 'POST', body: {
+      name: name.value, allowedOrigins: origins.value.split(',').map((s) => s.trim()).filter(Boolean), webhookUrl: hook.value.trim() } }), 'App created');
+    if (!r) return;
+    setApp(r.data.id);
+    showSecret('Your API key', 'Copy it now — it is only shown once. Your app sends it in the X-API-Key header.', r.apiKey);
+    renderApps();
+  };
+  root.append(
+    header('Apps', 'Each app has its own API key and its own separate data.'),
+    h('form', { class: 'card', onsubmit: (e) => { e.preventDefault(); create(); } },
+      h('h3', {}, 'New app'),
+      h('div', { class: 'row' }, h('div', {}, h('label', {}, 'Name'), name), h('div', {}, h('label', {}, 'Allowed websites'), origins), h('div', {}, h('label', {}, 'Webhook URL'), hook),
+        h('button', { class: 'btn primary' }, 'Create app'))),
+    state.apps.length ? h('div', { class: 'list' }, state.apps.map(appRow)) : h('div', { class: 'empty' }, 'No apps yet. Create your first one above.'));
+}
+function appRow(a) {
+  return h('div', { class: 'item' },
+    h('div', { class: 'info' }, h('b', {}, a.name), h('span', { class: 'muted' }, `${a.keyPrefix}… · ${a.rateLimitPerMinute}/min · created ${fmtDate(a.createdAt)}`)),
+    h('span', { class: 'tag ' + (a.active ? 'ok' : 'off') }, a.active ? 'Active' : 'Disabled'),
+    h('div', { class: 'actions' },
+      h('button', { class: 'btn small', onclick: () => appDetails(a) }, 'Details'),
+      h('button', { class: 'btn small', onclick: async () => { await run(() => admin('/apps/' + a.id, { method: 'PATCH', body: { active: !a.active } }), a.active ? 'App disabled' : 'App enabled'); renderApps(); } }, a.active ? 'Disable' : 'Enable'),
+      h('button', { class: 'btn small', onclick: () => confirmBox('Replace API key?', `The current key for “${a.name}” stops working immediately.`, 'Replace key', async () => {
+        const r = await run(() => admin(`/apps/${a.id}/rotate-key`, { method: 'POST' })); if (!r) return false;
+        setTimeout(() => showSecret('New API key', 'Copy it now — it is only shown once.', r.apiKey), 50);
+      }) }, 'New key'),
+      h('button', { class: 'btn small danger', onclick: () => {
+        const purge = h('input', { type: 'checkbox', style: 'width:auto;margin-right:8px', checked: true });
+        dialog('Delete app?', h('div', {}, h('p', { class: 'muted' }, `“${a.name}” and its API key will be removed.`), h('label', { style: 'display:flex;align-items:center' }, purge, 'Also delete all of its data')),
+          [{ label: 'Cancel' }, { label: 'Delete', cls: 'danger', run: async () => { if (!(await run(() => admin(`/apps/${a.id}?purge=${purge.checked}`, { method: 'DELETE' }), 'App deleted'))) return false; renderApps(); } }]);
+      } }, 'Delete')));
+}
+async function appDetails(a) {
+  const r = await run(() => admin('/apps/' + a.id)); if (!r) return;
+  const d = r.data;
+  const edit = h('input', { type: 'number', min: 1, value: d.rateLimitPerMinute });
+  const origins = h('input', { value: (d.allowedOrigins || []).join(', ') });
+  const hook = h('input', { value: d.webhookUrl || '' });
+  dialog(d.name, h('div', {},
+    h('p', { class: 'muted' }, 'Collections: ' + (d.collections.length ? d.collections.join(', ') : 'none yet')),
+    h('p', { class: 'muted' }, 'Last 7 days: ' + (d.usage.slice(0, 7).map((u) => `${u.day.slice(5)}: ${u.requests}`).join(' · ') || 'no requests yet')),
+    h('label', {}, 'Requests per minute'), edit, h('label', { style: 'margin-top:10px' }, 'Allowed websites (comma-separated)'), origins,
+    h('label', { style: 'margin-top:10px' }, 'Webhook URL'), hook,
+    h('label', { style: 'margin-top:10px' }, 'Webhook secret (to verify signatures)'), h('div', { class: 'secret' }, d.webhookSecret)),
+    [{ label: 'Close' }, { label: 'Save', cls: 'primary', run: async () => {
+      if (!(await run(() => admin('/apps/' + a.id, { method: 'PATCH', body: { rateLimitPerMinute: Number(edit.value), allowedOrigins: origins.value.split(',').map((s) => s.trim()).filter(Boolean), webhookUrl: hook.value.trim() } }), 'Saved'))) return false;
+      renderApps();
+    } }]);
+}
+
+// ---------- Data ----------
+const data = { page: 1, where: '', collections: [] };
+async function renderData() {
+  const root = clear($('#tab-data'));
+  await run(loadApps);
+  root.append(header('Data', 'Browse and edit the documents your apps have saved.', appPicker(renderData)));
+  if (!state.apps.length) return root.append(noApps());
+  const cols = await run(() => appApi('/data'));
+  data.collections = cols ? cols.data : [];
+  const newName = h('input', { placeholder: 'new collection, e.g. products', style: 'max-width:240px' });
+  root.append(h('div', { class: 'chips' },
+    data.collections.map((c) => h('button', { class: c.name === state.collection ? 'on' : '', onclick: () => { state.collection = c.name; data.page = 1; data.where = ''; renderData(); } }, `${c.name} (${c.count})`)),
+    h('form', { class: 'row', style: 'flex:0 0 auto;flex-wrap:nowrap', onsubmit: (e) => { e.preventDefault(); const n = newName.value.trim(); if (!n) return; state.collection = n; data.page = 1; data.where = ''; renderData(); } },
+      newName, h('button', { class: 'btn small' }, 'Open'))));
+  if (!state.collection) return root.append(h('div', { class: 'empty' }, data.collections.length ? 'Pick a collection above.' : 'No collections yet. Type a name above to start one.'));
+  await renderDocs(root);
+}
+async function renderDocs(root) {
+  const q = h('input', { placeholder: 'Search, e.g. {"price":{"$lt":50}} or just text', value: data.where });
+  const apply = (e) => { e.preventDefault(); data.where = q.value.trim(); data.page = 1; renderData(); };
+  let where = '';
+  if (data.where) where = data.where.startsWith('{') ? data.where : JSON.stringify({ $or: ['name', 'title', 'text', 'email'].map((f) => ({ [f]: { $contains: data.where } })) });
+  const url = `/data/${encodeURIComponent(state.collection)}?limit=10&page=${data.page}${where ? '&where=' + encodeURIComponent(where) : ''}`;
+  const r = await run(() => appApi(url));
+  root.append(h('form', { class: 'row', style: 'margin-bottom:14px', onsubmit: apply }, h('div', { style: 'flex:3 1 260px' }, q), h('button', { class: 'btn' }, 'Search'),
+    h('button', { class: 'btn primary', type: 'button', onclick: () => editDoc() }, '+ New document')));
+  if (!r) return;
+  root.append(r.data.length ? h('div', { class: 'list' }, r.data.map((d) => h('div', { class: 'item' },
+    h('div', { class: 'info' }, h('b', {}, d.id), h('span', { class: 'muted' }, 'updated ' + fmtDate(d.updatedAt))),
+    h('div', { class: 'actions' },
+      h('button', { class: 'btn small', onclick: () => editDoc(d) }, 'Edit'),
+      h('button', { class: 'btn small danger', onclick: () => confirmBox('Delete document?', d.id, 'Delete', async () => {
+        if (!(await run(() => appApi(`/data/${encodeURIComponent(state.collection)}/${encodeURIComponent(d.id)}`, { method: 'DELETE' }), 'Deleted'))) return false; renderData(); }) }, 'Delete')),
+    h('pre', {}, JSON.stringify(strip(d), null, 2)))))
+    : h('div', { class: 'empty' }, data.where ? 'Nothing matches that search.' : 'This collection is empty.'));
+  const p = r.pagination;
+  root.append(h('div', { class: 'pager' },
+    h('button', { class: 'btn small', disabled: data.page <= 1, onclick: () => { data.page--; renderData(); } }, '← Previous'),
+    h('span', { class: 'muted' }, `Page ${p.page} of ${Math.max(p.pages, 1)} · ${p.total} document${p.total === 1 ? '' : 's'}`),
+    h('button', { class: 'btn small', disabled: !p.hasMore, onclick: () => { data.page++; renderData(); } }, 'Next →')));
+}
+const strip = (d) => { const { id, createdAt, updatedAt, ...rest } = d; return rest; };
+function editDoc(doc) {
+  const ta = h('textarea', { rows: 12, spellcheck: false }); ta.value = JSON.stringify(doc ? strip(doc) : {}, null, 2);
+  dialog(doc ? 'Edit document' : 'New document', h('div', {}, h('p', { class: 'muted' }, doc ? 'Saving replaces the document (id and dates are kept).' : 'Write the document as JSON.'), ta),
+    [{ label: 'Cancel' }, { label: 'Save', cls: 'primary', run: async () => {
+      let body; try { body = JSON.parse(ta.value); } catch { toast('That is not valid JSON', true); return false; }
+      const base = `/data/${encodeURIComponent(state.collection)}`;
+      if (!(await run(() => appApi(doc ? `${base}/${encodeURIComponent(doc.id)}` : base, { method: doc ? 'PUT' : 'POST', body }), 'Saved'))) return false;
+      renderData();
+    } }]);
+}
+
+// ---------- Users ----------
+async function renderUsers(q = '') {
+  const root = clear($('#tab-users'));
+  await run(loadApps);
+  root.append(header('Users', 'People who signed up through your apps.', appPicker(() => renderUsers())));
+  if (!state.apps.length) return root.append(noApps());
+  const search = h('input', { placeholder: 'Search by name or email', value: q });
+  root.append(h('form', { class: 'row', style: 'margin-bottom:14px', onsubmit: (e) => { e.preventDefault(); renderUsers(search.value.trim()); } }, h('div', { style: 'flex:3 1 260px' }, search), h('button', { class: 'btn' }, 'Search')));
+  const r = await run(() => appApi('/auth/users?limit=50' + (q ? '&q=' + encodeURIComponent(q) : '')));
+  if (!r) return;
+  root.append(r.data.length ? h('div', { class: 'list' }, r.data.map((u) => h('div', { class: 'item' },
+    h('div', { class: 'info' }, h('b', {}, u.name || u.email), h('span', { class: 'muted' }, `${u.email} · joined ${fmtDate(u.createdAt)}`)),
+    h('span', { class: 'tag ' + (u.disabled ? 'off' : 'ok') }, u.disabled ? 'Disabled' : 'Active'),
+    h('div', { class: 'actions' },
+      h('button', { class: 'btn small', onclick: async () => { await run(() => appApi('/auth/users/' + u.id, { method: 'PATCH', body: { disabled: !u.disabled } }), u.disabled ? 'User enabled' : 'User disabled'); renderUsers(q); } }, u.disabled ? 'Enable' : 'Disable'),
+      h('button', { class: 'btn small danger', onclick: () => confirmBox('Delete user?', u.email, 'Delete', async () => { if (!(await run(() => appApi('/auth/users/' + u.id, { method: 'DELETE' }), 'User deleted'))) return false; renderUsers(q); }) }, 'Delete')))))
+    : h('div', { class: 'empty' }, q ? 'No users match.' : 'No users yet.'));
+}
+
+// ---------- Settings (key-value) & counters ----------
+async function renderSettings() {
+  const root = clear($('#tab-settings'));
+  await run(loadApps);
+  root.append(header('Settings & counters', 'Small values your apps read and write: flags, config, view counts.', appPicker(renderSettings)));
+  if (!state.apps.length) return root.append(noApps());
+  const [kv, ct] = await Promise.all([run(() => appApi('/kv')), run(() => appApi('/counters'))]);
+  const k = h('input', { placeholder: 'key, e.g. theme' }), v = h('input', { placeholder: 'value (text, number or JSON)' });
+  root.append(h('h3', { style: 'margin:6px 0 10px' }, 'Key-value store'),
+    h('form', { class: 'card row', onsubmit: async (e) => { e.preventDefault(); let val = v.value; try { val = JSON.parse(val); } catch {}
+      if (await run(() => appApi('/kv/' + encodeURIComponent(k.value.trim()), { method: 'PUT', body: { value: val } }), 'Saved')) renderSettings(); } },
+      h('div', {}, k), h('div', { style: 'flex:2 1 220px' }, v), h('button', { class: 'btn primary' }, 'Save')),
+    kv && Object.keys(kv.data).length ? h('div', { class: 'list' }, Object.entries(kv.data).map(([key, val]) => h('div', { class: 'item' },
+      h('div', { class: 'info' }, h('b', {}, key), h('span', { class: 'muted' }, JSON.stringify(val))),
+      h('div', { class: 'actions' }, h('button', { class: 'btn small', onclick: () => { k.value = key; v.value = JSON.stringify(val); k.focus(); } }, 'Edit'),
+        h('button', { class: 'btn small danger', onclick: async () => { await run(() => appApi('/kv/' + encodeURIComponent(key), { method: 'DELETE' }), 'Deleted'); renderSettings(); } }, 'Delete')))))
+      : h('div', { class: 'empty' }, 'No settings saved yet.'));
+  const cn = h('input', { placeholder: 'counter name, e.g. page-views' });
+  root.append(h('h3', { style: 'margin:26px 0 10px' }, 'Counters'),
+    h('form', { class: 'card row', onsubmit: async (e) => { e.preventDefault(); if (await run(() => appApi(`/counters/${encodeURIComponent(cn.value.trim())}/increment`, { method: 'POST', body: {} }), 'Counter updated')) renderSettings(); } },
+      h('div', {}, cn), h('button', { class: 'btn primary' }, 'Create / +1')),
+    ct && Object.keys(ct.data).length ? h('div', { class: 'list' }, Object.entries(ct.data).map(([name, val]) => h('div', { class: 'item' },
+      h('div', { class: 'info' }, h('b', {}, name), h('span', { class: 'muted' }, String(val))),
+      h('div', { class: 'actions' },
+        h('button', { class: 'btn small', onclick: async () => { await run(() => appApi(`/counters/${encodeURIComponent(name)}/increment`, { method: 'POST', body: {} })); renderSettings(); } }, '+1'),
+        h('button', { class: 'btn small danger', onclick: async () => { await run(() => appApi('/counters/' + encodeURIComponent(name), { method: 'DELETE' }), 'Deleted'); renderSettings(); } }, 'Delete')))))
+      : h('div', { class: 'empty' }, 'No counters yet.'));
+}
+
+// ---------- sign in / out ----------
+function signOut() {
+  state.key = ''; try { sessionStorage.removeItem('mk'); } catch {}
+  $('#app').classList.add('hidden'); $('#login').classList.remove('hidden'); $('#mk').value = '';
+}
+async function enter() {
+  $('#login').classList.add('hidden'); $('#app').classList.remove('hidden');
+  show(state.tab);
+  try {
+    const hl = await (await fetch('/api/health')).json();
+    $('#dot').style.background = hl.status === 'ok' ? 'var(--ok)' : 'var(--bad)';
+    $('#st').textContent = hl.status === 'ok' ? 'Online · ' + hl.storage : 'Database down';
+  } catch { $('#st').textContent = 'Offline'; }
+}
+$('#loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('#loginBtn'); btn.disabled = true; $('#loginErr').textContent = '';
+  state.key = $('#mk').value.trim();
+  try {
+    await admin('/apps');
+    try { sessionStorage.setItem('mk', state.key); } catch {}
+    await enter();
+  } catch (err) {
+    state.key = '';
+    $('#loginErr').textContent = /Admin is disabled/.test(err.message) ? err.message : err.message === 'Invalid master key' ? 'That key is not right.' : err.message;
+  } finally { btn.disabled = false; }
+});
+for (const b of document.querySelectorAll('nav [data-tab]')) b.addEventListener('click', () => show(b.dataset.tab));
+$('#logout').addEventListener('click', signOut);
+$('#docs').addEventListener('click', () => window.open('/api/docs', '_blank', 'noopener'));
+(async () => {
+  if (state.key) { try { await admin('/apps'); return enter(); } catch {} }
+  $('#login').classList.remove('hidden'); $('#mk').focus();
+})();
 </script>
 </body>
 </html>

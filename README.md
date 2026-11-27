@@ -23,9 +23,28 @@ npm test                 # 15 end-to-end tests
 To run the tests against a real MongoDB, set `TEST_MONGODB_URI`. The tests use a throwaway database and drop it afterwards.
 
 ### Deploy on Render
-- Build command: `npm install`  · Start command: `npm start`
-- Environment: `NODE_ENV=production`, `MASTER_KEY`, `TOKEN_SECRET`, `MONGODB_URI` (and `HF_TOKEN` if you want AI).
-- In production the server refuses to start without `MASTER_KEY` and `TOKEN_SECRET`. It also won't fall back to file storage if MongoDB is unreachable.
+
+The repo has a `render.yaml`, so Render sets most of it up for you:
+
+1. Render dashboard → **New → Blueprint** → pick this repo → **Apply**.
+2. When asked, paste your MongoDB Atlas connection string as `MONGODB_URI`. In Atlas, under Network Access, allow Render to connect (`0.0.0.0/0` is the simple option).
+3. Render generates `MASTER_KEY` and `TOKEN_SECRET` itself. Open the service → **Environment** and copy `MASTER_KEY`: it is your sign-in for the console.
+4. When the deploy is live, open the service URL and sign in.
+
+`CORS_ORIGINS` is `*` by default. Change it to your sites (comma-separated) once you know them. Add `HF_TOKEN` if you want the AI chat endpoint. In production the server refuses to start without `MASTER_KEY` and `TOKEN_SECRET`, and it won't fall back to file storage if MongoDB is unreachable. Check `/api/health`: it should say `"storage":"mongodb"`.
+
+The free plan sleeps after 15 minutes of no traffic, so the first request afterwards takes about 30 seconds.
+
+## The console
+
+The home page (`/`) is a simple console. Sign in with your `MASTER_KEY` to:
+
+- **Apps** – create apps, copy their keys, disable, replace keys, set limits, allowed websites and webhooks, delete
+- **Data** – browse collections, search, create, edit and delete documents
+- **Users** – see, disable or delete the people who signed up through an app
+- **Settings & counters** – edit key-value settings and counters
+
+The console works through the same API your apps use. With your master key it can also act as any app by sending `X-Master-Key` and `X-App-Id` instead of an app key.
 
 ## 1. Create an app (admin)
 
@@ -125,6 +144,7 @@ src/config.js       environment settings
 src/app.js          Express app and routing
 src/lib/            storage (MongoDB / JSON), query language, keys & tokens, middleware, webhooks
 src/routes/         admin, data, users, services (kv, counters, AI)
-public/index.html   landing page
+public/index.html   the console (single page, no build step)
+render.yaml         Render Blueprint
 test/api.test.js    end-to-end tests
 ```
