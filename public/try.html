@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Try MasterAPI</title>
+<link rel="icon" href="api.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0f1115; --panel:#171a21; --panel2:#1e222b; --line:#2a303c; --text:#e8eaf0; --muted:#98a1b3; --accent:#f59e0b; --ink:#1a1304; --ok:#22c55e; --bad:#ef4444; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 'Poppins', system-ui, sans-serif }
+  button, input, textarea { font:inherit; color:inherit }
+  h1, h2 { margin:0; font-weight:600 }
+  h1 span { color:var(--accent) }
+  main { max-width:820px; margin:0 auto; padding:32px 16px 64px }
+  p { margin:4px 0; color:var(--muted) }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px; margin-top:14px }
+  .card h2 { font-size:1.02rem; margin-bottom:4px }
+  .hint { font-size:.85rem; color:var(--muted); margin:0 0 12px }
+  label { display:block; font-size:.82rem; color:var(--muted); margin:10px 0 4px }
+  input, textarea { width:100%; background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:9px 12px; min-width:0 }
+  input:focus, textarea:focus { outline:2px solid var(--accent); outline-offset:-1px; border-color:transparent }
+  textarea { font:.85rem/1.5 ui-monospace, Menlo, Consolas, monospace; resize:vertical }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px }
+  @media (max-width:600px) { .grid { grid-template-columns:1fr } }
+  .btn { background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:9px 16px; cursor:pointer; margin-top:12px; margin-right:6px }
+  .btn:hover { border-color:var(--accent) }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:var(--ink); font-weight:500 }
+  .btn:disabled { opacity:.5; cursor:default }
+  pre { margin:12px 0 0; background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:12px; font:.8rem/1.5 ui-monospace, Menlo, Consolas, monospace; white-space:pre-wrap; overflow-wrap:anywhere; max-height:300px; overflow:auto }
+  .pill { display:inline-block; font-size:.78rem; padding:2px 10px; border-radius:99px; border:1px solid var(--line); background:var(--panel2) }
+  .ok { color:var(--ok); border-color:#1d5e36 } .bad { color:var(--bad); border-color:#6b2222 }
+  .steps { counter-reset:s; padding:0; list-style:none; margin:0 }
+  .steps li { counter-increment:s; padding-left:34px; position:relative; margin:8px 0; color:var(--muted) }
+  .steps li::before { content:counter(s); position:absolute; left:0; top:0; width:24px; height:24px; border-radius:50%; background:var(--accent); color:var(--ink); font-weight:600; display:grid; place-items:center; font-size:.8rem }
+  .steps b { color:var(--text); font-weight:500 }
+  code { font-family:ui-monospace, Menlo, Consolas, monospace; color:#fcd34d; font-size:.88em }
+  a { color:var(--accent) }
+</style>
+</head>
+<body>
+<main>
+  <h1>Try <span>MasterAPI</span></h1>
+  <p>Check that the API works, save and read some data, then copy the code for your app.</p>
+
+  <div class="card">
+    <h2>1 · Connect</h2>
+    <p class="hint">Paste the API key of the app you created in the console. It is only kept in this tab.</p>
+    <div class="grid">
+      <div><label for="base">API address</label><input id="base" spellcheck="false"></div>
+      <div><label for="key">App API key</label><input id="key" type="password" placeholder="mk_live_…" autocomplete="off" spellcheck="false"></div>
+    </div>
+    <button class="btn primary" id="check">Check connection</button>
+    <span id="conn" class="pill" style="margin-left:6px">not checked</span>
+  </div>
+
+  <div class="card">
+    <h2>2 · Save and read data</h2>
+    <p class="hint">Saves a document to a collection in your app's own database (MongoDB when configured).</p>
+    <div class="grid">
+      <div><label for="col">Collection</label><input id="col" value="notes"></div>
+      <div><label for="txt">Text</label><input id="txt" value="Hello from the test page"></div>
+    </div>
+    <button class="btn primary" id="save">Save document</button>
+    <button class="btn" id="list">List documents</button>
+    <pre id="out-data">Results appear here.</pre>
+  </div>
+
+  <div class="card">
+    <h2>3 · Other services</h2>
+    <p class="hint">Settings, counters and AI chat.</p>
+    <div class="grid">
+      <div><label for="kvk">Setting name</label><input id="kvk" value="welcome-message"></div>
+      <div><label for="kvv">Value</label><input id="kvv" value="Welcome!"></div>
+    </div>
+    <button class="btn" id="kvset">Save setting</button>
+    <button class="btn" id="kvget">Read setting</button>
+    <button class="btn" id="count">Count +1</button>
+    <div style="margin-top:12px"><label for="prompt">Ask the AI (needs HF_TOKEN on the server)</label><input id="prompt" value="Say hello in five words."></div>
+    <button class="btn" id="ask">Ask</button>
+    <pre id="out-svc">Results appear here.</pre>
+  </div>
+
+  <div class="card">
+    <h2>4 · Connect your app</h2>
+    <p class="hint">Copy this into your app. Keep the key on your server if you can. Anyone who sees it can use your app's data.</p>
+    <pre id="snippet"></pre>
+    <button class="btn" id="copy">Copy code</button>
+  </div>
+
+  <div class="card">
+    <h2>Setup in four steps</h2>
+    <ol class="steps">
+      <li><b>Create an app</b> in the <a href="/">console</a> (Apps tab) and copy its key. It's shown once.</li>
+      <li><b>Paste the key</b> above and click <b>Check connection</b>.</li>
+      <li><b>Save and read</b> a document to confirm your data is stored.</li>
+      <li><b>Copy the code</b> into your app. Full reference: <a href="/api/docs">/api/docs</a>.</li>
+    </ol>
+  </div>
+</main>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const base = () => $('base').value.trim().replace(/\/$/, '');
+const KEY_STORE = 'masterapi.try.key';
+$('base').value = location.origin;
+try { $('key').value = sessionStorage.getItem(KEY_STORE) || ''; } catch {}
+$('key').addEventListener('input', () => { try { sessionStorage.setItem(KEY_STORE, $('key').value.trim()); } catch {} snippet(); });
+$('base').addEventListener('input', snippet);
+
+async function call(method, path, body) {
+  if (!$('key').value.trim()) throw new Error('Paste your app API key first (step 1).');
+  const r = await fetch(base() + '/api/v1' + path, {
+    method,
+    headers: { 'X-API-Key': $('key').value.trim(), ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(`${r.status}: ${data.error || 'request failed'}`);
+  return data;
+}
+const show = (id, value, ok) => {
+  const el = $(id); el.textContent = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+  el.style.borderColor = ok === false ? '#6b2222' : ok ? '#1d5e36' : '';
+};
+const pill = (text, ok) => { const p = $('conn'); p.textContent = text; p.className = 'pill ' + (ok ? 'ok' : 'bad'); };
+async function act(fn, out) {
+  try { await fn(); } catch (e) { show(out, e.message, false); if (out === 'conn') pill('error', false); }
+}
+
+$('check').onclick = () => act(async () => {
+  const r = await fetch(base() + '/api/health');
+  const h = await r.json();
+  pill(`online · ${h.storage}`, true);
+  if (!$('key').value.trim()) return show('out-data', 'Server is online. Paste your app key to continue.', true);
+  const me = await call('GET', '/me');
+  pill(`online · ${h.storage} · app: ${me.data.name}`, true);
+}, 'conn');
+
+$('save').onclick = () => act(async () => {
+  const d = await call('POST', `/data/${encodeURIComponent($('col').value.trim())}`, { text: $('txt').value, source: 'try-page' });
+  show('out-data', { saved: d.data }, true);
+}, 'out-data');
+
+$('list').onclick = () => act(async () => {
+  const d = await call('GET', `/data/${encodeURIComponent($('col').value.trim())}?limit=5`);
+  show('out-data', { total: d.pagination.total, latest: d.data }, true);
+}, 'out-data');
+
+$('kvset').onclick = () => act(async () => {
+  await call('PUT', `/kv/${encodeURIComponent($('kvk').value.trim())}`, { value: $('kvv').value });
+  show('out-svc', 'Setting saved.', true);
+}, 'out-svc');
+$('kvget').onclick = () => act(async () => {
+  const d = await call('GET', `/kv/${encodeURIComponent($('kvk').value.trim())}`);
+  show('out-svc', { [d.key]: d.value }, true);
+}, 'out-svc');
+$('count').onclick = () => act(async () => {
+  const d = await call('POST', '/counters/visits/increment', {});
+  show('out-svc', `Counter "visits" is now ${d.value}.`, true);
+}, 'out-svc');
+$('ask').onclick = () => act(async () => {
+  $('ask').disabled = true; show('out-svc', 'Thinking…');
+  try {
+    const d = await call('POST', '/ai/chat', { prompt: $('prompt').value });
+    show('out-svc', d.reply, true);
+  } finally { $('ask').disabled = false; }
+}, 'out-svc');
+
+function snippet() {
+  const b = base() || 'https://YOUR-API', k = $('key').value.trim() || 'YOUR_APP_KEY';
+  $('snippet').textContent =
+`const API = "${b}/api/v1";
+const KEY = "${k}";
+
+async function api(path, options = {}) {
+  const res = await fetch(API + path, {
+    ...options,
+    headers: { "X-API-Key": KEY, "Content-Type": "application/json", ...options.headers },
+  });
+  if (!res.ok) throw new Error((await res.json()).error);
+  return res.json();
+}
+
+// Save a document
+await api("/data/orders", { method: "POST", body: JSON.stringify({ item: "Pen", qty: 2 }) });
+
+// Read documents (filter, sort, page)
+const { data } = await api("/data/orders?qty=2&sort=-createdAt&limit=20");
+
+// Settings and counters
+await api("/kv/theme", { method: "PUT", body: JSON.stringify({ value: "dark" }) });
+await api("/counters/visits/increment", { method: "POST", body: "{}" });`;
+}
+$('copy').onclick = async () => { try { await navigator.clipboard.writeText($('snippet').textContent); show('out-svc', 'Code copied.', true); } catch { show('out-svc', 'Could not copy. Select the code and copy it.', false); } };
+snippet();
+</script>
+</body>
+</html>

@@ -49,6 +49,9 @@ function createApp() {
   // Old paths keep working for existing clients.
   app.use('/api/data', requireApp, require('./routes/data'));
 
+  // One-page tester: check the API, save data, try services, copy code for your app.
+  app.get('/try', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'try.html')));
+
   // Landing page / docs UI
   app.use(express.static(path.join(__dirname, '..', 'public')));
 

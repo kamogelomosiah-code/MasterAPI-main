@@ -11,6 +11,22 @@ One backend for all your apps. Each app gets its own API key and its own separat
 
 Storage is MongoDB when `MONGODB_URI` is set, otherwise a JSON file (for local development).
 
+## Where this project is now (27 Nov 2026)
+
+**Status: working backend, v2.** Suggested GitHub name: `masterapi`.
+
+| | |
+|---|---|
+| **Works and tested** | Admin console (`/`), one-page tester (`/try`), per-app API keys, data CRUD with filters/paging/bulk, user accounts, key-value store, counters, signed webhooks, rate limits, cross-site (CORS) calls |
+| **Tests** | 20 automated end-to-end tests (`npm test`) on the JSON-file store, plus browser runs of the console and tester page |
+| **Not yet verified** | Saving to **MongoDB Atlas** (no database was reachable while building; `TEST_MONGODB_URI=… npm test` runs the same tests against one). The AI chat route (needs `HF_TOKEN`). A live Render deployment |
+| **Ready to deploy** | `render.yaml` is in the repo (see "Deploy on Render" below) |
+
+**Used by:** the portfolio (contact messages, goals, a visit counter and guestbook) and the household budget app (settings sync).
+**Not connected yet:** the video site (Elysian), which still uses its own MongoDB.
+
+**Next:** run the tests against Atlas, deploy to Render, then point the portfolio and budget app at the live address.
+
 ## Run it
 
 ```bash
