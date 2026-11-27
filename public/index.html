@@ -1,248 +1,72 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MasterAPI - Welcome</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css" />
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 600px;
-            width: 100%;
-        }
-
-        .card {
-            background: white;
-            border-radius: 16px;
-            padding: 60px 40px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            text-align: center;
-        }
-
-        .logo {
-            font-size: 64px;
-            margin-bottom: 20px;
-        }
-
-        h1 {
-            color: #333;
-            font-size: 40px;
-            margin-bottom: 10px;
-            font-weight: 700;
-        }
-
-        .version {
-            color: #999;
-            font-size: 14px;
-            margin-bottom: 30px;
-        }
-
-        .description {
-            color: #666;
-            font-size: 16px;
-            line-height: 1.6;
-            margin-bottom: 40px;
-        }
-
-        .status {
-            display: inline-block;
-            background: #d4edda;
-            color: #155724;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 40px;
-        }
-
-        .status i {
-            margin-right: 8px;
-        }
-
-        .buttons {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-
-        @media (max-width: 500px) {
-            .buttons {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        .btn {
-            padding: 16px 24px;
-            border: none;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-        }
-
-        .btn-secondary {
-            background: #f0f0f0;
-            color: #333;
-        }
-
-        .btn-secondary:hover {
-            background: #e0e0e0;
-            transform: translateY(-2px);
-        }
-
-        .features {
-            text-align: left;
-            background: #f8f9fa;
-            padding: 25px;
-            border-radius: 8px;
-            margin-top: 30px;
-        }
-
-        .features h3 {
-            color: #333;
-            font-size: 16px;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .feature-list {
-            list-style: none;
-        }
-
-        .feature-list li {
-            color: #666;
-            font-size: 14px;
-            padding: 8px 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .feature-list li:before {
-            content: "✓";
-            color: #28a745;
-            font-weight: bold;
-            font-size: 16px;
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 40px;
-            color: #999;
-            font-size: 13px;
-        }
-
-        .api-ready {
-            display: inline-block;
-            background: #d1ecf1;
-            color: #0c5460;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-size: 13px;
-            margin-top: 20px;
-        }
-
-        @keyframes pulse {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.7;
-            }
-        }
-
-        .pulse {
-            animation: pulse 2s infinite;
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MasterAPI</title>
+<link rel="icon" href="api.svg">
+<style>
+  :root { --bg:#0f1115; --card:#171a21; --text:#e6e8ee; --muted:#9aa3b2; --accent:#f59e0b; --line:#262b36; }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif }
+  main { max-width:880px; margin:0 auto; padding:48px 16px 64px }
+  h1 { font-size:2.4rem; margin:0 0 8px } h1 span { color:var(--accent) }
+  h2 { margin:40px 0 12px; font-size:1.25rem }
+  p { color:var(--muted); margin:0 0 12px }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px; margin-top:24px }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px }
+  .card b { display:block; margin-bottom:4px }
+  .card p { font-size:.9rem; margin:0 }
+  pre { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; overflow-x:auto; font-size:.85rem; line-height:1.5 }
+  code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:#fcd34d }
+  pre code { color:var(--text) }
+  a { color:var(--accent) }
+  #status { display:inline-flex; align-items:center; gap:8px; font-size:.85rem; color:var(--muted); margin-top:8px }
+  #dot { width:8px; height:8px; border-radius:50%; background:#6b7280 }
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="card">
-            <div class="logo"><i class="ti ti-braces" style="color: #667eea;"></i></div>
-            
-            <h1>MasterAPI</h1>
-            <div class="version">v1.0.0 - Demo Edition</div>
+<main>
+  <h1>Master<span>API</span></h1>
+  <p>One backend for all my apps — data, user accounts, settings, counters, webhooks and AI, behind a single API key per app.</p>
+  <div id="status"><span id="dot"></span><span id="st">Checking server…</span></div>
 
-            <div class="status pulse">
-                <i class="ti ti-check"></i>
-                Ready to use - All systems operational
-            </div>
+  <div class="grid">
+    <div class="card"><b>Data CRUD</b><p>Any collection, filters, sorting, paging, bulk create / update / delete.</p></div>
+    <div class="card"><b>User accounts</b><p>Sign up, log in, profiles and password changes for each app's users.</p></div>
+    <div class="card"><b>Key-value</b><p>Store settings, feature flags or any JSON by key.</p></div>
+    <div class="card"><b>Counters</b><p>Page views, likes, downloads — atomic increments.</p></div>
+    <div class="card"><b>Webhooks</b><p>Signed POSTs to your app when its data changes.</p></div>
+    <div class="card"><b>AI</b><p>Text generation through Hugging Face.</p></div>
+  </div>
 
-            <p class="description">
-                Complete API solution with frontend dashboard. Save data, manage apps, and get API keys—all without MongoDB setup!
-            </p>
+  <h2>Quick start</h2>
+  <pre><code># 1. Create an app (admin, once)
+curl -X POST $API/api/admin/apps -H "Authorization: Bearer $MASTER_KEY" \
+  -H "Content-Type: application/json" -d '{"name":"My shop"}'
+# → { "apiKey": "mk_live_…" }   save it, it's shown once
 
-            <div class="buttons">
-                <button class="btn btn-primary" onclick="location.href='/dashboard'">
-                    <i class="ti ti-layout-dashboard"></i>
-                    Open Dashboard
-                </button>
-                <button class="btn btn-secondary" onclick="location.href='/api/info'">
-                    <i class="ti ti-code"></i>
-                    API Info
-                </button>
-            </div>
+# 2. Use it from your app
+curl -X POST $API/api/v1/data/products -H "X-API-Key: mk_live_…" \
+  -H "Content-Type: application/json" -d '{"name":"Pen","price":10}'
+curl "$API/api/v1/data/products?price=10&sort=-createdAt&limit=20" -H "X-API-Key: mk_live_…"</code></pre>
 
-            <div class="api-ready">
-                <strong>API Running:</strong> http://localhost:3000/api
-            </div>
+  <h2>From JavaScript</h2>
+  <pre><code>const api = (path, opts = {}) =&gt; fetch(`${API}/api/v1${path}`, {
+  ...opts,
+  headers: { "X-API-Key": KEY, "Content-Type": "application/json", ...opts.headers },
+}).then((r) =&gt; r.json());
 
-            <div class="features">
-                <h3><i class="ti ti-star" style="color: #ffc107;"></i> Features</h3>
-                <ul class="feature-list">
-                    <li>Register apps & generate API keys</li>
-                    <li>Save & retrieve JSON data</li>
-                    <li>Beautiful responsive dashboard</li>
-                    <li>File-based storage (no DB setup)</li>
-                    <li>REST API with authentication</li>
-                    <li>Automatic data persistence</li>
-                </ul>
-            </div>
+await api("/data/todos", { method: "POST", body: JSON.stringify({ text: "Ship it" }) });
+const { data } = await api("/data/todos?done=false");</code></pre>
 
-            <div class="footer">
-                <p>📚 Docs: <a href="/QUICK_REFERENCE.md" style="color: #667eea; text-decoration: none;">QUICK_REFERENCE.md</a> | <a href="/GETTING_STARTED.md" style="color: #667eea; text-decoration: none;">GETTING_STARTED.md</a></p>
-                <p style="margin-top: 10px;">🚀 Run: <code>node demo-server.js</code></p>
-            </div>
-        </div>
-    </div>
+  <p>Full endpoint list: <a href="/api/docs">/api/docs</a> · Health: <a href="/api/health">/api/health</a></p>
+</main>
+<script>
+  fetch('/api/health').then(r => r.json()).then(h => {
+    document.getElementById('dot').style.background = h.status === 'ok' ? '#22c55e' : '#ef4444';
+    document.getElementById('st').textContent = h.status === 'ok' ? `Online · storage: ${h.storage}` : 'Database unreachable';
+  }).catch(() => { document.getElementById('st').textContent = 'Static preview — server not running here'; });
+</script>
 </body>
 </html>
