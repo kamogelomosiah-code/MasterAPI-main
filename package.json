@@ -1,6 +1,6 @@
 {
   "name": "masterapi",
-  "version": "2.0.0",
+  "version": "3.1.0",
   "description": "One backend for all your apps: CRUD, user accounts, key-value, counters, webhooks and AI",
   "main": "index.js",
   "scripts": {
@@ -21,9 +21,11 @@
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "express": "^4.21.2",
-    "mongodb": "^6.12.0"
+    "jszip": "^3.10.2",
+    "mammoth": "^1.13.0",
+    "mongodb": "^6.12.0",
+    "unpdf": "^2.2.3"
   },
-  "devDependencies": {},
   "engines": {
     "node": ">=18.0.0"
   }

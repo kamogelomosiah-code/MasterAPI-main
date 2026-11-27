@@ -175,8 +175,16 @@ function dialog(title, content, buttons) {
   d.showModal();
 }
 const confirmBox = (title, text, label, run) => dialog(title, h('p', { class: 'muted' }, text), [{ label: 'Cancel' }, { label, cls: 'danger', run }]);
-const showSecret = (title, note, secret) => dialog(title, h('div', {}, h('p', { class: 'muted' }, note), h('div', { class: 'secret' }, secret)),
-  [{ label: 'Copy', run: async () => { try { await navigator.clipboard.writeText(secret); toast('Copied'); } catch { toast('Select and copy it by hand', true); } return false; } }, { label: 'Done', cls: 'primary' }]);
+const showSecret = (title, note, secret, appName) => {
+  // The two settings the app that uses this key needs. Copy-paste into its environment variables.
+  const env = `MASTERAPI_URL=${location.origin}\nMASTERAPI_KEY=${secret}`;
+  dialog(title, h('div', {}, h('p', { class: 'muted' }, note), h('div', { class: 'secret' }, secret),
+    h('p', { class: 'muted', style: 'margin-top:14px' }, `To connect ${appName || 'your app'}, add these two settings to its host (for example in Render → Environment):`),
+    h('div', { class: 'secret', style: 'white-space:pre-wrap' }, env)),
+    [{ label: 'Copy settings', run: async () => { try { await navigator.clipboard.writeText(env); toast('Copied'); } catch { toast('Select and copy it by hand', true); } return false; } },
+     { label: 'Copy key', run: async () => { try { await navigator.clipboard.writeText(secret); toast('Copied'); } catch { toast('Select and copy it by hand', true); } return false; } },
+     { label: 'Done', cls: 'primary' }]);
+};
 
 // ---------- layout ----------
 function header(title, sub, ...right) {
@@ -214,11 +222,19 @@ async function renderApps() {
       name: name.value, allowedOrigins: origins.value.split(',').map((s) => s.trim()).filter(Boolean), webhookUrl: hook.value.trim() } }), 'App created');
     if (!r) return;
     setApp(r.data.id);
-    showSecret('Your API key', 'Copy it now — it is only shown once. Your app sends it in the X-API-Key header.', r.apiKey);
+    showSecret('Your API key', 'Copy it now — it is only shown once. Your app sends it in the X-API-Key header.', r.apiKey, r.data.name);
     renderApps();
   };
+  const hl = await fetch('/api/health').then((r) => r.json()).catch(() => null);
+  const pill = (ok, text, warn) => h('span', { class: 'tag ' + (ok ? 'ok' : warn ? 'off' : '') }, text);
+  const status = hl && h('div', { class: 'chips', id: 'service-status', style: 'margin-bottom:14px' },
+    pill(hl.persistent, hl.persistent ? 'Storage: MongoDB' : 'Storage: file (lost on restart)', !hl.persistent),
+    pill(hl.services.ai.configured, hl.services.ai.configured ? 'AI: on' : 'AI: off (set HF_TOKEN)'),
+    pill(hl.services.mail.configured, hl.services.mail.configured ? 'Mail: on' : 'Mail: off (set RESEND_API_KEY)'),
+    h('span', { class: 'tag' }, 'v' + hl.version));
   root.append(
     header('Apps', 'Each app has its own API key and its own separate data.'),
+    status,
     h('form', { class: 'card', onsubmit: (e) => { e.preventDefault(); create(); } },
       h('h3', {}, 'New app'),
       h('div', { class: 'row' }, h('div', {}, h('label', {}, 'Name'), name), h('div', {}, h('label', {}, 'Allowed websites'), origins), h('div', {}, h('label', {}, 'Webhook URL'), hook),
@@ -234,7 +250,7 @@ function appRow(a) {
       h('button', { class: 'btn small', onclick: async () => { await run(() => admin('/apps/' + a.id, { method: 'PATCH', body: { active: !a.active } }), a.active ? 'App disabled' : 'App enabled'); renderApps(); } }, a.active ? 'Disable' : 'Enable'),
       h('button', { class: 'btn small', onclick: () => confirmBox('Replace API key?', `The current key for “${a.name}” stops working immediately.`, 'Replace key', async () => {
         const r = await run(() => admin(`/apps/${a.id}/rotate-key`, { method: 'POST' })); if (!r) return false;
-        setTimeout(() => showSecret('New API key', 'Copy it now — it is only shown once.', r.apiKey), 50);
+        setTimeout(() => showSecret('New API key', 'Copy it now — it is only shown once.', r.apiKey, a.name), 50);
       }) }, 'New key'),
       h('button', { class: 'btn small danger', onclick: () => {
         const purge = h('input', { type: 'checkbox', style: 'width:auto;margin-right:8px', checked: true });
@@ -248,14 +264,16 @@ async function appDetails(a) {
   const edit = h('input', { type: 'number', min: 1, value: d.rateLimitPerMinute });
   const origins = h('input', { value: (d.allowedOrigins || []).join(', ') });
   const hook = h('input', { value: d.webhookUrl || '' });
+  const contact = h('input', { type: 'email', value: d.contactEmail || '', placeholder: 'Where contact messages are emailed' });
   dialog(d.name, h('div', {},
     h('p', { class: 'muted' }, 'Collections: ' + (d.collections.length ? d.collections.join(', ') : 'none yet')),
-    h('p', { class: 'muted' }, 'Last 7 days: ' + (d.usage.slice(0, 7).map((u) => `${u.day.slice(5)}: ${u.requests}`).join(' · ') || 'no requests yet')),
+    h('p', { class: 'muted' }, 'Last 7 days: ' + (d.usage.slice(0, 7).map((u) => `${u.day.slice(5)}: ${u.requests}${u.aiChats ? ` (${u.aiChats} AI)` : ''}`).join(' · ') || 'no requests yet')),
     h('label', {}, 'Requests per minute'), edit, h('label', { style: 'margin-top:10px' }, 'Allowed websites (comma-separated)'), origins,
+    h('label', { style: 'margin-top:10px' }, 'Contact email (for the mail service)'), contact,
     h('label', { style: 'margin-top:10px' }, 'Webhook URL'), hook,
     h('label', { style: 'margin-top:10px' }, 'Webhook secret (to verify signatures)'), h('div', { class: 'secret' }, d.webhookSecret)),
     [{ label: 'Close' }, { label: 'Save', cls: 'primary', run: async () => {
-      if (!(await run(() => admin('/apps/' + a.id, { method: 'PATCH', body: { rateLimitPerMinute: Number(edit.value), allowedOrigins: origins.value.split(',').map((s) => s.trim()).filter(Boolean), webhookUrl: hook.value.trim() } }), 'Saved'))) return false;
+      if (!(await run(() => admin('/apps/' + a.id, { method: 'PATCH', body: { rateLimitPerMinute: Number(edit.value), allowedOrigins: origins.value.split(',').map((s) => s.trim()).filter(Boolean), webhookUrl: hook.value.trim(), contactEmail: contact.value.trim() } }), 'Saved'))) return false;
       renderApps();
     } }]);
 }

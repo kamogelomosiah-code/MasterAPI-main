@@ -1,8 +1,8 @@
 // Machine-readable endpoint list served at GET /api/docs.
 module.exports = {
   name: 'MasterAPI',
-  version: '2.0.0',
-  description: 'One backend for all your apps: data CRUD, user accounts, key-value storage, counters, webhooks and AI.',
+  version: '3.0.0',
+  description: 'One backend for all your apps: data CRUD, user accounts, key-value storage, counters, webhooks, AI chat and a contact-mail service.',
   auth: {
     apps: 'Send your app key in the X-API-Key header on every /api/v1 request.',
     users: 'After /api/v1/auth/login, also send Authorization: Bearer <token> to act as that user.',
@@ -36,7 +36,38 @@ module.exports = {
     ],
     keyValue: ['GET /api/v1/kv ?prefix', 'GET /api/v1/kv/:key', 'PUT /api/v1/kv/:key {value}', 'DELETE /api/v1/kv/:key'],
     counters: ['GET /api/v1/counters', 'GET /api/v1/counters/:name', 'POST /api/v1/counters/:name/increment {by?}', 'DELETE /api/v1/counters/:name'],
-    ai: ['POST /api/v1/ai/chat {prompt | messages, system?, model?, maxTokens?, temperature?}'],
+    ai: [
+      'GET /api/v1/ai/status — is AI on, and which models',
+      'POST /api/v1/ai/chat {prompt | messages, system?, history?, model?, maxTokens?, temperature?} → {reply, model} — tries several Hugging Face models in order',
+    ],
+    documents: [
+      'GET /api/v1/docs/status — what can be parsed and which extraction schemas exist',
+      'POST /api/v1/docs/parse — send a PDF, Word (.docx) or text file as the raw body (or JSON {text} / {filename, contentBase64}, up to 10 MB) → {type, pages, chars, text, warnings}',
+      'POST /api/v1/docs/extract?schema=resume|statement|receipt (or ?fields=a,b) — same upload, returns {data, method: "ai"|"rules", warnings}; falls back to simple rules when AI is unavailable',
+      'POST /api/v1/ai/extract {text, schema | fields} — extraction from text you already have',
+    ],
+    files: [
+      'POST /api/v1/files?path=a/b.pdf (the file as the body, any type, up to 10 MB) or { path, text | json | contentBase64, tags? } — 409 if it exists (?overwrite=true to replace)',
+      'GET /api/v1/files?prefix=&type=&q=&tag=&limit=&offset= — list files and sub-folders; GET /api/v1/files/usage',
+      'GET /api/v1/files/:ref — details; GET /api/v1/files/:ref/content — download (?inline=1 for images, PDFs and text). :ref is the id or the path with / written as %2F',
+      'PUT /api/v1/files/:ref — replace (send If-Match: <sha256> to avoid lost updates); PATCH /api/v1/files/:ref {path?, tags?} — rename / move / tag; POST /api/v1/files/:ref/copy {path}',
+      'GET /api/v1/files/:ref/json — read a JSON file; PATCH /api/v1/files/:ref/json — merge-patch it (RFC 7396)',
+      'DELETE /api/v1/files/:ref; DELETE /api/v1/files?prefix=folder/&confirm=true',
+    ],
+    assistant: [
+      'GET /api/v1/ai/tasks — what the writing assistant can do',
+      'POST /api/v1/ai/write {task, text | fileId | path | url, instructions?, language?, tone?} → {text} — tasks: draft, summarize, rewrite, proofread, translate, expand, shorten, bullets, email, minutes, explain, cv-review, cv-tailor, cover-letter',
+      'POST /api/v1/ai/analyze {text | fileId | url, question?} → {data: {summary, keyPoints, topics, sentiment, entities, actionItems, answer}}',
+      'POST /api/v1/ai/generate {kind: "document"|"slides", prompt, format?, slideCount?, source?: {text|fileId|url}, save?: {path, overwrite?} | false} → a real .docx / .pptx / .md stored in Files',
+      'POST /api/v1/docs/build {kind, format, document | slides} — the same files from structure you provide (no AI needed)',
+    ],
+    web: [
+      'POST /api/v1/web/fetch {url, maxChars?} → {title, text, links[]} — web pages, JSON and PDFs (private networks are blocked)',
+      'POST /api/v1/web/extract {url, schema | fields} → {data}',
+      'POST /api/v1/agent/run {goal, maxSteps?, allowWrites?, allowHosts?, saveTo?} → {status, answer, steps[]} — an agent that browses, reads/writes files and reports; read-only on the web unless allowWrites + allowHosts',
+      '/api/v1/automations — save goals (name, goal, maxSteps, allowWrites, allowHosts): GET, POST, GET/PUT/DELETE /:id, POST /:id/run {input?}',
+    ],
+    mail: ['POST /api/v1/mail/contact {name, email, subject?, message} — saves the message (collection contact_messages) and emails the app\'s contact address'],
   },
   webhooks: 'Set webhookUrl on an app to receive POSTs on document.created / updated / deleted. Verify X-MasterAPI-Signature = HMAC-SHA256(body, webhookSecret).',
 };
