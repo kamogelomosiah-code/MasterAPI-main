@@ -1,600 +1,130 @@
 # MasterAPI
 
-MasterAPI is a simple Node.js/Express REST API for managing app registrations, dynamic data storage, and AI-powered endpoints. It uses MongoDB for data persistence and supports modular expansion for new features.
+One backend for all your apps. Each app gets its own API key and its own separate data, with:
 
-## Project Structure & File Roles
+- **Data CRUD** – any collection; filter, sort, page, bulk create/update/delete
+- **User accounts** – sign-up, log-in, profiles, password change, user management
+- **Key-value store** – settings, feature flags, any JSON by key
+- **Counters** – atomic increments for views, likes, downloads
+- **Webhooks** – signed POSTs to your app when its data changes
+- **AI** – text generation via Hugging Face (optional)
 
-### Entry Point
-- **index.js**: Main server file. Sets up Express, connects to MongoDB, loads middleware and routes, serves the frontend, and handles errors.
+Storage is MongoDB when `MONGODB_URI` is set, otherwise a JSON file (for local development).
 
-### Configuration
-- **config/database.config.js**: Handles MongoDB connection logic. Exports functions to connect and retrieve the database instance.
+## Run it
 
-### Middleware
-- **middleware/auth.middleware.js**: Implements API key authentication and basic rate limiting for protected endpoints.
-
-### Models
-- **models/app.model.js**: Defines schema for registered apps, API keys, and rate limits.
-- **models/database.model.js**: Defines schema for database metadata (name, collections, status).
-- **models/collection.model.js**: Defines schema for collection metadata (fields, document count, status).
-- **models/db-meta.model.js**: Stores dynamic schema definitions for user-created databases/collections.
-- **models/item.model.js**: Example schema for a generic item (with a name field).
-- **models/news-scraper.model.js**: Universal news scraping logic using axios and cheerio.
-
-### Controllers
-- **controllers/collection.controller.js**: Handles collection creation and quick CRUD operations.
-- **controllers/database.controller.js**: Handles database creation, listing, details, and deletion.
-- **controllers/task.controller.js**: Universal MongoDB operations (CRUD, aggregate, etc.) based on URI and query parameters.
-
-### Routes
-- **routes/apps.routes.js**: API routes for app registration, info, and API key management.
-- **routes/dynamic-items.routes.js**: API routes for CRUD operations on app-specific collections.
-- **routes/ai.routes.js**: Endpoints for AI chat and model listing via OpenRouter API.
-
-### Public
-- **public/index.ejs**: Frontend UI for interacting with the API (app registration, data management, etc.).
-- **public/api.svg**: (Optional) API logo or graphic.
-
-### Environment & Config
-- **.env**: Stores environment variables (e.g., MONGODB_URI, PORT, API keys).
-- **package.json**: Lists project dependencies, scripts, and metadata.
-- **.gitignore**: Specifies files/folders to ignore in git (node_modules, .env).
-
-## How It Works
-1. **Startup**: `index.js` loads environment variables, connects to MongoDB, and starts the Express server.
-2. **Routing**: Requests are routed to controllers via route files (apps, dynamic-items, ai).
-3. **Authentication**: Protected endpoints use `auth.middleware.js` to check API keys and enforce rate limits.
-4. **Controllers**: Controllers use models and the database config to interact with MongoDB for CRUD and other operations.
-5. **Frontend**: The public folder provides a simple UI for users to interact with the API.
-6. **AI Integration**: The AI route connects to OpenRouter for chat and model listing endpoints.
-
-## Endpoints Overview
-- `/api/apps/register` (POST): Register a new app.
-- `/api/apps/me` (GET): Get info about the current app.
-- `/api/data/:collection` (CRUD): Manage data in dynamic collections.
-- `/api/ai/models` (GET): List available AI models.
-- `/api/ai/chat` (POST): Chat with AI.
-- `/api/ai/completion` (POST): Get AI completions.
-- `/api/health` (GET): Health check.
-- `/api/info` (GET): API info and endpoint listing.
-
-## Setup
-1. Clone the repo and run `npm install`.
-2. Create a `.env` file with your MongoDB URI and any required API keys.
-3. Start the server with `npm run dev` or `npm start`.
-4. Access the frontend at `http://localhost:3000` and API at `http://localhost:3000/api`.
-
-## Notes
-- All main files follow clear naming conventions for maintainability.
-- Update import paths in your code if you rename files.
-- Extend models, controllers, and routes to add new features as needed.
-
----
-Feel free to ask for more details or code samples for any part of the app!
-
-# MasterAPI Documentation
-
-MasterAPI is a full-stack API service that provides data storage, AI capabilities, and multi-tenant architecture for external applications.
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js 16+ 
-- MongoDB
-- Hugging Face API token (for AI features)
-
-### Installation
 ```bash
-git clone <your-repo>
-cd MasterAPI
 npm install
+cp .env.example .env     # set MASTER_KEY and TOKEN_SECRET (and MONGODB_URI)
+npm start                # http://localhost:3000  — docs at /api/docs
+npm test                 # 15 end-to-end tests
 ```
 
-### Configuration
-Create `.env` file:
-```env
-MONGODB_URI=mongodb://localhost:27017/masterapi
-PORT=3000
-HF_TOKEN=your_huggingface_token
-BRAND_NAME=MasterAPI
-PAGE_TITLE=MasterAPI Dashboard
-```
+To run the tests against a real MongoDB, set `TEST_MONGODB_URI`. The tests use a throwaway database and drop it afterwards.
 
-### Start Server
+### Deploy on Render
+- Build command: `npm install`  · Start command: `npm start`
+- Environment: `NODE_ENV=production`, `MASTER_KEY`, `TOKEN_SECRET`, `MONGODB_URI` (and `HF_TOKEN` if you want AI).
+- In production the server refuses to start without `MASTER_KEY` and `TOKEN_SECRET`. It also won't fall back to file storage if MongoDB is unreachable.
+
+## 1. Create an app (admin)
+
 ```bash
-npm start
+curl -X POST https://YOUR-API/api/admin/apps \
+  -H "Authorization: Bearer $MASTER_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"Video site","allowedOrigins":["https://my-video-site.com"]}'
 ```
 
-Access the dashboard: http://localhost:3000
+The response has `apiKey` (`mk_live_…`). **It is shown only once.** Only a hash of it is stored. If you lose it, call `POST /api/admin/apps/:id/rotate-key`.
 
-## 🔑 Authentication
+| Admin route | |
+|---|---|
+| `GET /api/admin/apps` | list apps |
+| `POST /api/admin/apps` | create (`name`, `description`, `rateLimitPerMinute`, `allowedOrigins`, `webhookUrl`) |
+| `GET /api/admin/apps/:id` | details, collections, 30-day usage, webhook secret |
+| `PATCH /api/admin/apps/:id` | change settings; `{"active": false}` disables it |
+| `POST /api/admin/apps/:id/rotate-key` | new key; the old one stops working |
+| `DELETE /api/admin/apps/:id?purge=true` | delete (and with `purge`, all its data) |
 
-All API requests require authentication using API keys.
+## 2. Use it from your apps
 
-### 1. Register Your Application
-```bash
-curl -X POST http://localhost:3000/api/apps/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "My Awesome App",
-    "description": "Application using MasterAPI"
-  }'
+Send `X-API-Key: mk_live_…` on every `/api/v1` request.
+
+```js
+const API = "https://YOUR-API/api/v1";
+const api = (path, opts = {}) =>
+  fetch(API + path, {
+    ...opts,
+    headers: { "X-API-Key": process.env.MASTERAPI_KEY, "Content-Type": "application/json", ...opts.headers },
+  }).then((r) => r.json());
+
+await api("/data/products", { method: "POST", body: JSON.stringify({ name: "Pen", price: 10 }) });
+const { data, pagination } = await api("/data/products?sort=-price&limit=20&page=1");
 ```
 
-**Response:**
-```json
-{
-  "success": true,
-  "app": {
-    "id": "507f1f77bcf86cd799439011",
-    "name": "My Awesome App",
-    "apiKey": "a1b2c3d4e5f6...",
-    "createdAt": "2024-01-01T00:00:00.000Z"
-  }
-}
+### Data
+
+| Route | |
+|---|---|
+| `GET /data` | your collections and their sizes |
+| `GET /data/:collection` | list. `?limit=20&page=2` (or `offset`), `?sort=-createdAt,name`, `?fields=name,price`, `?status=active` (exact match), `?where={"price":{"$lt":50}}` |
+| `POST /data/:collection/query` | same, with a JSON body `{ filter, sort, limit, offset, fields }` |
+| `GET /data/:collection/count` | count matching documents |
+| `GET /data/:collection/:id` | one document |
+| `POST /data/:collection` | create one `{…}` or many `[{…}, …]` (max 1000). You may pass your own `id`. |
+| `PATCH /data/:collection/:id` | merge fields (`null` removes a field) |
+| `PUT /data/:collection/:id` | replace the document |
+| `DELETE /data/:collection/:id` | delete one |
+| `PATCH /data/:collection` | bulk update `{ "filter": {…}, "set": {…} }` |
+| `DELETE /data/:collection` | bulk delete `{ "filter": {…} }`, or `?all=true` |
+
+Filter operators: `$eq $ne $gt $gte $lt $lte $in $nin $exists $contains $startsWith`, plus `$or` and `$and`. `$contains` and `$startsWith` ignore case. Other operators (like `$where`) are rejected.
+
+Every document gets `id`, `createdAt` and `updatedAt`. When a logged-in user creates a document it also gets `ownerId`, and `?mine=true` returns only that user's documents.
+
+### User accounts (for the people using your app)
+
+| Route | |
+|---|---|
+| `POST /auth/register` | `{ email, password, name?, profile? }` → `{ token, user }` |
+| `POST /auth/login` | `{ email, password }` → `{ token, user }` |
+| `GET /auth/me` · `PATCH /auth/me` · `DELETE /auth/me` | needs `Authorization: Bearer <token>` |
+| `POST /auth/me/password` | `{ currentPassword, newPassword }` |
+| `GET /auth/users?q=` · `PATCH /auth/users/:id` · `DELETE /auth/users/:id` | manage users (call from your server) |
+
+Passwords need at least 8 characters with a letter and a number, and are hashed with scrypt. After 10 failed logins, that email is locked out for 15 minutes. Tokens last 7 days by default. Each app's users and tokens are separate.
+
+### Key-value, counters, AI
+
+```
+GET/PUT/DELETE /kv/:key        PUT body: { "value": anything }
+GET /kv?prefix=feature.
+GET /counters/:name            POST /counters/:name/increment  { "by": 1 }
+POST /ai/chat                  { "prompt": "…" } or { "messages": [...], "system": "…" }
 ```
 
-### 2. Use API Key in Requests
-Include the API key in headers or query parameters:
+### Webhooks
 
-**Header:**
-```bash
-curl -X GET http://localhost:3000/api/data/users \
-  -H "X-API-Key: your-api-key"
+Set `webhookUrl` on an app to receive `document.created`, `document.updated`, `document.deleted`, `document.bulk_updated` and `document.bulk_deleted` events. Check the `X-MasterAPI-Signature` header like this:
+
+```js
+crypto.createHmac("sha256", WEBHOOK_SECRET).update(rawBody).digest("hex") === req.headers["x-masterapi-signature"]
 ```
 
-**Query Parameter:**
-```bash
-curl -X GET "http://localhost:3000/api/data/users?apiKey=your-api-key"
+## Security notes
+
+- **Keep API keys on servers.** A key in browser code can be read by anyone. If you must call from a browser, set `allowedOrigins` on the app. Note that this only stops other websites, not scripts. A key in browser code also gives full access to `/auth/users`.
+- Each app has a per-minute rate limit (`X-RateLimit-*` headers; `429` when exceeded).
+- Old clients using `/api/data/:collection` still work. New code should use `/api/v1`.
+
+## Layout
+
 ```
-
-## 📊 Data Storage API
-
-Store and manage your application data in isolated MongoDB collections.
-
-### Create Data
-```bash
-curl -X POST http://localhost:3000/api/data/users \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "John Doe",
-    "email": "john@example.com",
-    "age": 30,
-    "preferences": {
-      "theme": "dark",
-      "notifications": true
-    }
-  }'
+index.js            starts the server
+src/config.js       environment settings
+src/app.js          Express app and routing
+src/lib/            storage (MongoDB / JSON), query language, keys & tokens, middleware, webhooks
+src/routes/         admin, data, users, services (kv, counters, AI)
+public/index.html   landing page
+test/api.test.js    end-to-end tests
 ```
-
-### Read Data
-**Get all documents:**
-```bash
-curl -X GET "http://localhost:3000/api/data/users?limit=10&offset=0" \
-  -H "X-API-Key: your-api-key"
-```
-
-**Get specific document:**
-```bash
-curl -X GET http://localhost:3000/api/data/users/document-id \
-  -H "X-API-Key: your-api-key"
-```
-
-### Update Data
-**Full update (PUT):**
-```bash
-curl -X PUT http://localhost:3000/api/data/users/document-id \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Jane Doe",
-    "email": "jane@example.com",
-    "age": 31
-  }'
-```
-
-**Partial update (PATCH):**
-```bash
-curl -X PATCH http://localhost:3000/api/data/users/document-id \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "age": 32
-  }'
-```
-
-### Delete Data
-```bash
-curl -X DELETE http://localhost:3000/api/data/users/document-id \
-  -H "X-API-Key: your-api-key"
-```
-
-### Batch Operations
-```bash
-curl -X POST http://localhost:3000/api/data/users/batch \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "documents": [
-      {"name": "User 1", "email": "user1@example.com"},
-      {"name": "User 2", "email": "user2@example.com"}
-    ]
-  }'
-```
-
-## 🤖 AI API
-
-Use Hugging Face models for text generation, image creation, and speech synthesis.
-
-### Available Models
-```bash
-curl -X GET http://localhost:3000/api/ai/models \
-  -H "X-API-Key: your-api-key"
-```
-
-### Text Generation (Chat)
-```bash
-curl -X POST http://localhost:3000/api/ai/chat \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "mistralai/Mistral-7B-Instruct-v0.3",
-    "messages": [
-      {"role": "system", "content": "You are a helpful assistant."},
-      {"role": "user", "content": "Explain quantum computing in simple terms."}
-    ]
-  }'
-```
-
-### Image Generation
-```bash
-curl -X POST http://localhost:3000/api/ai/image \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "A beautiful sunset over mountains, digital art",
-    "model": "black-forest-labs/FLUX.1-dev",
-    "width": 1024,
-    "height": 1024
-  }'
-```
-
-### Text-to-Speech
-```bash
-curl -X POST http://localhost:3000/api/ai/speech \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "text": "Hello, this is a text to speech conversion.",
-    "model": "hexgrad/Kokoro-82M",
-    "voice": "default",
-    "speed": 1.0
-  }'
-```
-
-### Unified AI Completion
-```bash
-curl -X POST http://localhost:3000/api/ai/complete \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
-    "prompt": "Write a short poem about technology",
-    "task": "text" // Optional: auto-detects if not specified
-  }'
-```
-
-### Batch AI Processing
-```bash
-curl -X POST http://localhost:3000/api/ai/batch \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "requests": [
-      {
-        "id": "1",
-        "model": "mistralai/Mistral-7B-Instruct-v0.3",
-        "input": "Explain AI in simple terms",
-        "type": "text"
-      },
-      {
-        "id": "2", 
-        "model": "black-forest-labs/FLUX.1-dev",
-        "input": "A robot painting a picture",
-        "type": "image"
-      }
-    ]
-  }'
-```
-
-## 🗄️ Database Management
-
-Create and manage logical databases for your application.
-
-### Create Database
-```bash
-curl -X POST http://localhost:3000/api/databases \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "myapp_production",
-    "description": "Production database for MyApp"
-  }'
-```
-
-### List Databases
-```bash
-curl -X GET http://localhost:3000/api/databases \
-  -H "X-API-Key: your-api-key"
-```
-
-### Database Collections
-**Create collection:**
-```bash
-curl -X POST http://localhost:3000/api/databases/myapp_production/collections \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "users",
-    "description": "User profiles collection"
-  }'
-```
-
-**List collections:**
-```bash
-curl -X GET http://localhost:3000/api/databases/myapp_production/collections \
-  -H "X-API-Key: your-api-key"
-```
-
-## 📈 Monitoring & Health
-
-### Health Check
-```bash
-curl -X GET http://localhost:3000/api/health
-```
-
-### API Info
-```bash
-curl -X GET http://localhost:3000/api/info
-```
-
-### Debug Routes
-```bash
-curl -X GET http://localhost:3000/api/debug/routes
-```
-
-## 🔒 Security Features
-
-- **API Key Authentication**: Required for all operations
-- **Rate Limiting**: 60 requests per minute per app
-- **Data Isolation**: Each app has separate database
-- **Audit Logging**: All requests are logged
-- **Input Validation**: All inputs are validated
-
-## 🚦 Rate Limits
-
-- **Global**: 100 requests per 15 minutes per IP
-- **Per App**: 60 requests per minute, 1000 per hour
-- **AI Endpoints**: Additional limits based on Hugging Face quotas
-
-## ❌ Error Handling
-
-All errors follow this format:
-```json
-{
-  "success": false,
-  "error": "Error message",
-  "code": "ERROR_CODE" // Optional
-}
-```
-
-### Common Error Codes
-- `INVALID_API_KEY` - Authentication failed
-- `RATE_LIMIT_EXCEEDED` - Too many requests
-- `VALIDATION_ERROR` - Invalid input data
-- `NOT_FOUND` - Resource not found
-- `DATABASE_ERROR` - Database operation failed
-
-## 💡 Best Practices
-
-### 1. Store API Keys Securely
-```javascript
-// Good: Store in environment variables
-const API_KEY = process.env.MASTERAPI_KEY;
-
-// Bad: Hardcode in source
-const API_KEY = "a1b2c3d4e5f6";
-```
-
-### 2. Handle Errors Gracefully
-```javascript
-async function callMasterAPI() {
-  try {
-    const response = await fetch('/api/data/users', {
-      headers: { 'X-API-Key': API_KEY }
-    });
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('API call failed:', error.message);
-    // Retry or show user-friendly message
-  }
-}
-```
-
-### 3. Use Pagination for Large Datasets
-```javascript
-async function getAllUsers() {
-  let offset = 0;
-  const limit = 50;
-  const allUsers = [];
-  
-  while (true) {
-    const response = await fetch(
-      `/api/data/users?limit=${limit}&offset=${offset}`,
-      { headers: { 'X-API-Key': API_KEY } }
-    );
-    
-    const data = await response.json();
-    allUsers.push(...data.data);
-    
-    if (data.data.length < limit) break;
-    offset += limit;
-  }
-  
-  return allUsers;
-}
-```
-
-### 4. Cache Model Lists
-```javascript
-let cachedModels = null;
-
-async function getModels() {
-  if (!cachedModels) {
-    const response = await fetch('/api/ai/models', {
-      headers: { 'X-API-Key': API_KEY }
-    });
-    cachedModels = await response.json();
-  }
-  return cachedModels;
-}
-```
-
-## 🔧 Integration Examples
-
-### JavaScript/Node.js
-```javascript
-class MasterAPIClient {
-  constructor(apiKey, baseURL = 'http://localhost:3000') {
-    this.apiKey = apiKey;
-    this.baseURL = baseURL;
-  }
-  
-  async request(endpoint, options = {}) {
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      ...options,
-      headers: {
-        'X-API-Key': this.apiKey,
-        'Content-Type': 'application/json',
-        ...options.headers
-      }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
-    }
-    
-    return await response.json();
-  }
-  
-  async createData(collection, data) {
-    return this.request(`/api/data/${collection}`, {
-      method: 'POST',
-      body: JSON.stringify(data)
-    });
-  }
-  
-  async generateText(prompt, model = 'default') {
-    return this.request('/api/ai/chat', {
-      method: 'POST',
-      body: JSON.stringify({
-        messages: [{ role: 'user', content: prompt }],
-        model
-      })
-    });
-  }
-}
-
-// Usage
-const client = new MasterAPIClient('your-api-key');
-const result = await client.createData('users', { name: 'John' });
-const aiResponse = await client.generateText('Hello AI!');
-```
-
-### Python
-```python
-import requests
-
-class MasterAPIClient:
-    def __init__(self, api_key, base_url="http://localhost:3000"):
-        self.api_key = api_key
-        self.base_url = base_url
-        self.session = requests.Session()
-        self.session.headers.update({
-            "X-API-Key": api_key,
-            "Content-Type": "application/json"
-        })
-    
-    def create_data(self, collection, data):
-        response = self.session.post(
-            f"{self.base_url}/api/data/{collection}",
-            json=data
-        )
-        response.raise_for_status()
-        return response.json()
-    
-    def generate_text(self, prompt, model="default"):
-        response = self.session.post(
-            f"{self.base_url}/api/ai/chat",
-            json={
-                "messages": [{"role": "user", "content": prompt}],
-                "model": model
-            }
-        )
-        response.raise_for_status()
-        return response.json()
-
-# Usage
-client = MasterAPIClient("your-api-key")
-result = client.create_data("users", {"name": "John"})
-ai_response = client.generate_text("Hello AI!")
-```
-
-## 🆘 Troubleshooting
-
-### Common Issues
-
-**1. API Key Not Working**
-- Check if the app is active: `GET /api/apps/me`
-- Verify the key format (64-character hex)
-- Ensure the key is included in headers or query params
-
-**2. Rate Limit Errors**
-- Implement exponential backoff in your client
-- Reduce request frequency
-- Contact support for higher limits if needed
-
-**3. AI Model Not Responding**
-- Check if Hugging Face token is valid
-- Verify model name and availability
-- Try a different model
-
-**4. Database Connection Issues**
-- Verify MongoDB is running
-- Check connection string in .env file
-- Ensure database user has proper permissions
-
-### Getting Help
-- Check the dashboard at http://localhost:3000
-- Use the API tester in the dashboard
-- View audit logs for request history
-- Check server logs for detailed errors
-
-## 📞 Support
-
-For issues and questions:
-1. Check this documentation
-2. Use the API health endpoints
-3. Review server logs
-4. Contact support with your app ID and error details
-
----
-
-**MasterAPI** - Your complete API platform for data storage and AI capabilities.
