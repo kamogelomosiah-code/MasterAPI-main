@@ -18,7 +18,7 @@ function createApp() {
   });
   app.use(cors({
     origin: config.corsOrigins.includes('*') ? true : config.corsOrigins,
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Master-Key'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Master-Key', 'X-App-Id'],
     exposedHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'Retry-After'],
   }));
   app.use(express.json({ limit: '5mb' }));

@@ -1,0 +1,30 @@
+# Render Blueprint — New + > Blueprint, pick this repo. Render fills in the secrets marked generateValue,
+# and asks you for the ones marked sync: false.
+services:
+  - type: web
+    name: masterapi
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NODE_ENV
+        value: production
+      - key: MASTER_KEY        # your admin password for the console — view it in Render > Environment
+        generateValue: true
+      - key: TOKEN_SECRET      # signs your apps' user logins
+        generateValue: true
+      - key: MONGODB_URI       # paste your MongoDB Atlas connection string
+        sync: false
+      - key: MONGODB_DB
+        value: masterapi
+      - key: CORS_ORIGINS      # your sites that call the API from a browser, comma-separated (or *)
+        value: "*"
+      - key: HF_TOKEN          # optional, enables /api/v1/ai/chat
+        sync: false

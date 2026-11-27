@@ -201,6 +201,19 @@ test('admin can disable, rotate key and delete', async () => {
   assert.equal((await call('GET', '/api/v1/me')).status, 401);
 });
 
+test('admin can act as an app with the master key', async () => {
+  const a = await call('POST', '/api/admin/apps', { key: null, admin: true, body: { name: 'Console target' } });
+  const h = { 'x-master-key': process.env.MASTER_KEY, 'x-app-id': a.body.data.id, 'content-type': 'application/json' };
+  const c = await fetch(base + '/api/v1/data/things', { method: 'POST', headers: h, body: JSON.stringify({ x: 1 }) });
+  assert.equal(c.status, 201);
+  const l = await fetch(base + '/api/v1/data/things', { headers: h });
+  assert.equal((await l.json()).data.length, 1);
+  const wrong = await fetch(base + '/api/v1/data/things', { headers: { ...h, 'x-master-key': 'nope' } });
+  assert.equal(wrong.status, 401);
+  const missing = await fetch(base + '/api/v1/data/things', { headers: { ...h, 'x-app-id': 'does-not-exist' } });
+  assert.equal(missing.status, 404);
+});
+
 test('rate limit per app', async () => {
   const a = await call('POST', '/api/admin/apps', { key: null, admin: true, body: { name: 'Tiny', rateLimitPerMinute: 3 } });
   const k = a.body.apiKey;
