@@ -65,8 +65,8 @@ async function makeDocx(lines) {
 
 /** Sends raw bytes (a file) as the request body. */
 function rawClient(getBase) {
-  return async (url, { body, key, type = 'application/octet-stream', headers = {} }) => {
-    const r = await fetch(getBase() + url, { method: 'POST', headers: { 'content-type': type, 'x-api-key': key, ...headers }, body });
+  return async (url, { body, key, type = 'application/octet-stream', headers = {}, method = 'POST' }) => {
+    const r = await fetch(getBase() + url, { method, headers: { 'content-type': type, 'x-api-key': key, ...headers }, body });
     return { status: r.status, body: await r.json().catch(() => null), headers: r.headers };
   };
 }

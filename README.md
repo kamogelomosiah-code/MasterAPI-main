@@ -142,10 +142,10 @@ GET /counters/:name            POST /counters/:name/increment  { "by": 1 }
 ```bash
 curl -X POST $API/api/v1/ai/chat -H "X-API-Key: $KEY" -H "Content-Type: application/json" \
   -d '{"system":"You are a friendly assistant for my shop.","history":[...],"prompt":"Do you ship abroad?"}'
-# → { "reply": "…", "model": "Qwen/Qwen2.5-7B-Instruct", "ms": 1800 }
+# → { "reply": "…", "model": "Qwen/Qwen3-4B-Instruct-2507", "ms": 1800 }
 ```
 
-Send `prompt` (or a `messages` list), an optional `system` prompt and earlier turns in `history`. The server tries the models in order (`HF_MODEL`, `HF_MODELS`, then `Qwen/Qwen2.5-7B-Instruct` and `meta-llama/Llama-3.2-3B-Instruct`) and returns the first answer. A model that is missing, slow (25 s) or failing is skipped; a refused token stops at once with a clear message. One request never takes longer than 55 s. Each app gets 20 chats a minute. Only this server holds the Hugging Face token, so your apps never need it. `GET /ai/status` shows whether AI is on and which models are in use.
+Send `prompt` (or a `messages` list), an optional `system` prompt and earlier turns in `history`. The server tries the models in order (`HF_MODEL`, `HF_MODELS`, then `Qwen/Qwen3-4B-Instruct-2507`, `Qwen/Qwen2.5-3B-Instruct`, `Qwen/Qwen2.5-7B-Instruct` and `meta-llama/Llama-3.2-3B-Instruct`) and returns the first answer. A model that is missing, slow (25 s) or failing is skipped; a refused token stops at once with a clear message. One request never takes longer than 55 s. Each app gets 20 chats a minute. Only this server holds the Hugging Face token, so your apps never need it. `GET /ai/status` shows whether AI is on and which models are in use.
 
 ### Documents: PDF parser and AI extraction
 
@@ -158,6 +158,48 @@ curl -X POST "$API/api/v1/docs/extract?schema=resume" -H "X-API-Key: $KEY" --dat
 ```
 
 Files up to 10 MB; the type is detected from the file itself (PDF, `.docx`, text). Scanned PDFs with no text layer are reported with a warning (there is no OCR). Extraction asks the AI service for JSON and cleans the result (dates to `YYYY-MM-DD`, amounts to numbers, bad links dropped). Long bank statements are read in pieces and merged. If AI is off or fails, simple rules still find contact details, links, skills and statement lines, and `method` says `"rules"`. Each app gets `DOCS_PER_MINUTE` (default 20) requests a minute.
+
+### Files: store, read, edit and organise any file
+
+```bash
+# Upload any file (the file is the body). Folders are just paths.
+curl -X POST "$API/api/v1/files?path=docs/cv.pdf" -H "X-API-Key: $KEY" --data-binary @cv.pdf
+# JSON files: send the data, read it back, change one field without re-sending the rest
+curl -X POST $API/api/v1/files -H "X-API-Key: $KEY" -H "Content-Type: application/json" -d '{"path":"settings/app.json","json":{"theme":"dark","beta":false}}'
+curl -X PATCH "$API/api/v1/files/settings%2Fapp.json/json" -H "X-API-Key: $KEY" -H "Content-Type: application/json" -d '{"beta":true}'
+curl "$API/api/v1/files/settings%2Fapp.json/json" -H "X-API-Key: $KEY"
+curl "$API/api/v1/files?prefix=docs/" -H "X-API-Key: $KEY"           # list a folder
+curl -O -J "$API/api/v1/files/docs%2Fcv.pdf/content" -H "X-API-Key: $KEY"   # download
+```
+
+Any type of file, up to 10 MB each (`FILE_MAX_MB`) and 100 MB per app (`FILE_QUOTA_MB`). A file is found by its **id** or by its **path** (write `/` as `%2F` in the URL). Every file records its type (taken from the bytes and the name, not just the header), size, SHA-256 and version. Creating at an existing path gives `409`; `PUT` replaces it and bumps the version; send `If-Match: <sha256>` and a stale write gets `412` instead of silently overwriting someone else's change. `.json` files are checked as valid JSON before they are stored (`422` otherwise); `PATCH …/json` is an RFC 7396 merge-patch. You can rename or move (`PATCH {path}`), tag, copy, and delete a file or a whole folder. Downloads are sent as attachments with a locked-down content policy, so an uploaded HTML file can never run in your API's origin. Bytes live in MongoDB when `MONGODB_URI` is set (they survive Render restarts), otherwise on disk next to the data file. Raw uploads can be 10 MB; the JSON `contentBase64` form is limited to about 3.7 MB by the 5 MB JSON body limit.
+
+### Writing assistant: documents, slides, CVs
+
+```bash
+# Rewrite / summarise / translate / review a CV ... text, a stored file (PDF or Word), or a web page
+curl -X POST $API/api/v1/ai/write -H "X-API-Key: $KEY" -H "Content-Type: application/json" \
+  -d '{"task":"cv-tailor","path":"docs/cv.pdf","instructions":"Job: junior data engineer at a bank"}'
+# Analyse anything: summary, key points, people/companies/dates/amounts, sentiment, action items, and an answer
+curl -X POST $API/api/v1/ai/analyze -H "X-API-Key: $KEY" -H "Content-Type: application/json" -d '{"url":"https://example.com/report","question":"What changed this year?"}'
+# Make a real Word document or PowerPoint deck and store it in Files
+curl -X POST $API/api/v1/ai/generate -H "X-API-Key: $KEY" -H "Content-Type: application/json" \
+  -d '{"kind":"slides","prompt":"Pitch for a budgeting app for students","slideCount":8,"save":{"path":"decks/pitch.pptx"}}'
+```
+
+Tasks for `/ai/write`: `draft, summarize, rewrite, proofread, translate, expand, shorten, bullets, email, minutes, explain, cv-review, cv-tailor, cover-letter` (the CV tasks are told never to invent facts). `/ai/generate` asks the model for a *structure* (headings and paragraphs, or slides and bullets) and then builds a valid `.docx` / `.pptx` / `.md` / `.html` itself, so the file always opens. Use `source` to build from a stored file ("turn this CV into a one-page summary"). `POST /docs/build` makes the same files from a structure you send, with no AI at all. Long input is read in parts and the response says when only part was used.
+
+**The model.** The default is `Qwen/Qwen3-4B-Instruct-2507` (4 billion parameters, Apache-2.0): small, free through Hugging Face, and good at following instructions and writing JSON. If it is busy the server falls back to `Qwen/Qwen2.5-3B-Instruct`, then `Qwen2.5-7B-Instruct` and `Llama-3.2-3B-Instruct`. Change the order with `HF_MODEL` / `HF_MODELS`. Quality is that of a small model: good for drafting, summarising and structuring, not a replacement for proofreading.
+
+### Web access and the automation agent
+
+```bash
+curl -X POST $API/api/v1/web/fetch -H "X-API-Key: $KEY" -H "Content-Type: application/json" -d '{"url":"https://example.com"}'
+curl -X POST $API/api/v1/agent/run -H "X-API-Key: $KEY" -H "Content-Type: application/json" \
+  -d '{"goal":"Read https://example.com/pricing and write a short comparison table to agent/pricing.md","maxSteps":6}'
+```
+
+`/web/fetch` returns the readable text, title and links of a web page (also JSON and PDFs). `/web/extract` turns a page into structured fields. `/agent/run` is a small agent: it picks one tool at a time (`web_fetch`, `http_request`, `list_files`, `read_file`, `write_file`, `finish`), sees the result and continues for at most 10 steps and ~85 seconds, then returns the answer and every step it took. Saved goals live under `/automations` (create once, `POST /automations/:id/run` whenever, from a cron service or a webhook). Safety: the web is **read-only** unless a run sets `allowWrites` *and* lists the hosts it may send data to (`allowHosts`); files can only be written inside `agent/`; text from web pages is treated as data, not instructions; private and internal network addresses are blocked on every redirect hop; one run at a time per app, 6 runs a minute. A 4-billion-parameter model is good at simple, well-described tasks (look something up, compare, summarise, fill a file) and will make mistakes on long or ambiguous ones, so check the `steps` it returns.
 
 ### Contact mail
 

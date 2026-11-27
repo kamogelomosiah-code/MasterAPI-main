@@ -18,8 +18,8 @@ function createApp() {
   });
   app.use(cors({
     origin: config.corsOrigins.includes('*') ? true : config.corsOrigins,
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Master-Key', 'X-App-Id'],
-    exposedHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'Retry-After'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Master-Key', 'X-App-Id', 'X-Filename', 'If-Match', 'If-None-Match'],
+    exposedHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'Retry-After', 'ETag', 'Content-Disposition'],
   }));
   app.use(express.json({ limit: '5mb' }));
 
@@ -30,7 +30,7 @@ function createApp() {
       version: config.version,
       storage: getStore().kind,
       persistent: getStore().kind === 'mongodb',
-      services: { ai: { configured: ai.enabled(), models: ai.enabled() ? config.hfModels : [] }, mail: { configured: mail.enabled() }, docs: { pdf: true, docx: true, extract: Object.keys(require('./lib/schemas').SCHEMAS) } },
+      services: { ai: { configured: ai.enabled(), models: ai.enabled() ? config.hfModels : [] }, mail: { configured: mail.enabled() }, docs: { pdf: true, docx: true, extract: Object.keys(require('./lib/schemas').SCHEMAS) }, files: { maxMB: config.fileMaxBytes / 1048576, quotaMB: config.fileQuotaBytes / 1048576 }, agent: { enabled: ai.enabled() } },
       warnings: config.warnings,
       uptime: Math.round(process.uptime()),
       time: new Date().toISOString(),
@@ -58,6 +58,9 @@ function createApp() {
   v1.use('/', require('./routes/ai'));
   v1.use('/', require('./routes/mail'));
   v1.use('/', require('./routes/docs'));
+  v1.use('/', require('./routes/files'));
+  v1.use('/', require('./routes/assist'));
+  v1.use('/', require('./routes/agent'));
   app.use('/api/v1', v1);
   // Old paths keep working for existing clients.
   app.use('/api/data', requireApp, require('./routes/data'));

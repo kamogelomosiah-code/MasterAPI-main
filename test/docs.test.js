@@ -165,3 +165,13 @@ test('each app has its own document allowance', async () => {
   assert.equal(codes.filter((c) => c === 200).length, 30); assert.equal(codes[31], 429);
   assert.equal((await call('POST', '/api/v1/docs/parse', { key, body: { text: 'still fine' } })).status, 200, 'another app is unaffected');
 });
+
+test('extract and parse can read a stored file by id or path', async () => {
+  const up = await fetch(`${base}/api/v1/files?path=in/cv.pdf`, { method: 'POST', headers: { 'x-api-key': key, 'content-type': 'application/pdf' }, body: makePdf(RESUME) });
+  const id = (await up.json()).data.id;
+  const a = await call('POST', '/api/v1/docs/parse', { key, body: { fileId: id } });
+  assert.match(a.body.text, /Kamogelo Mosia/); assert.equal(a.body.filename, 'cv.pdf');
+  const b = await call('POST', '/api/v1/docs/extract', { key, body: { path: 'in/cv.pdf', schema: 'resume' } });
+  assert.equal(b.body.data.name, 'Kamogelo Mosia');
+  assert.equal((await call('POST', '/api/v1/docs/parse', { key, body: { fileId: 'nope' } })).status, 404);
+});

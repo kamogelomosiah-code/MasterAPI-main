@@ -14,7 +14,7 @@ const num = (v, def, min, max, name) => {
   return Math.min(max, Math.max(min, n));
 };
 
-router.get('/ai/status', (req, res) => res.json({ configured: ai.enabled(), models: config.hfModels }));
+router.get('/ai/status', (req, res) => res.json({ configured: ai.enabled(), models: config.hfModels, skills: ['chat', 'write', 'analyze', 'generate', 'extract', 'agent'] }));
 
 router.post('/ai/chat', ah(async (req, res) => {
   if (!ai.enabled()) throw new ApiError(503, 'AI is not configured on this server. Set HF_TOKEN.');

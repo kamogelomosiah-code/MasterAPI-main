@@ -2,7 +2,7 @@
 //   POST /docs/parse     a PDF, Word or text file  -> its text
 //   POST /docs/extract   a file (or text)          -> structured data (resume, statement, receipt, or your own fields)
 //   POST /ai/extract     text                      -> structured data
-// Send the file itself as the request body (fetch(url, { method: 'POST', body: file })). Max 10 MB.
+// Send the file itself as the request body (fetch(url, { method: 'POST', body: file })), or { fileId } / { path } of a stored file. Max 10 MB.
 const express = require('express');
 const router = express.Router();
 const { ah, bad, ApiError } = require('../lib/errors');
@@ -29,11 +29,15 @@ function throttle(req, res) {
 }
 
 /** The file (raw body or JSON { contentBase64 }) or text ({ text }) that was sent. */
-function input(req) {
+async function input(req) {
   if (Buffer.isBuffer(req.body) && req.body.length) {
     return { buf: req.body, filename: String(req.get('x-filename') || req.query.filename || '') };
   }
   const b = req.body && typeof req.body === 'object' ? req.body : {};
+  if (b.fileId || b.path) {
+    const { meta, buf } = await require('../lib/files').read(req.client.id, String(b.fileId || b.path));
+    return { buf, filename: meta.name };
+  }
   if (typeof b.text === 'string' && b.text.trim()) return { buf: Buffer.from(b.text, 'utf8'), filename: String(b.filename || 'text.txt'), isText: true };
   if (typeof b.contentBase64 === 'string' && b.contentBase64) {
     if (b.contentBase64.length > MAX_BYTES * 1.4) throw new ApiError(413, `The file is too large (max ${MAX_BYTES / 1024 / 1024} MB).`);
@@ -57,7 +61,7 @@ router.get('/docs/status', (req, res) => {
 });
 
 router.post('/docs/parse', raw, ah(async (req, res) => {
-  const { buf, filename } = input(req);
+  const { buf, filename } = await input(req);
   throttle(req, res);
   const doc = await parseDocument(buf, filename);
   count(req, 'docs');
@@ -67,7 +71,7 @@ router.post('/docs/parse', raw, ah(async (req, res) => {
 router.post('/docs/extract', raw, ah(async (req, res) => {
   const spec = schemaSpec(req);
   if (!spec) throw bad(`Say what to extract: ?schema=resume (or statement, receipt) or ?fields=name,date`);
-  const { buf, filename } = input(req);
+  const { buf, filename } = await input(req);
   throttle(req, res);
   const doc = await parseDocument(buf, filename);
   if (!doc.text) throw new ApiError(422, doc.warnings[0] || 'No text was found in this document.');

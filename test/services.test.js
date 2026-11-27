@@ -51,7 +51,7 @@ test('health reports the services and honest storage status', async () => {
   assert.match(h.version, /^3\./);
   assert.equal(h.persistent, false, 'file storage is not persistent');
   assert.equal(h.services.ai.configured, true);
-  assert.deepEqual(h.services.ai.models, ['bad/model', 'slow/model', 'Qwen/Qwen2.5-7B-Instruct', 'meta-llama/Llama-3.2-3B-Instruct']);
+  assert.deepEqual(h.services.ai.models, ['bad/model', 'slow/model', 'Qwen/Qwen3-4B-Instruct-2507', 'Qwen/Qwen2.5-3B-Instruct', 'Qwen/Qwen2.5-7B-Instruct', 'meta-llama/Llama-3.2-3B-Instruct']);
   assert.equal(h.services.mail.configured, true);
   assert.ok(!JSON.stringify(h).includes('hf-test-token') && !JSON.stringify(h).includes('re_test'), 'no secrets in health');
 });
@@ -61,9 +61,9 @@ test('chat: tries the next model when one is unsupported or too slow', async () 
   hfCalls.length = 0;
   const r = await call('POST', '/api/v1/ai/chat', { key: apiKey, body: { prompt: 'Hello' } });
   assert.equal(r.status, 200);
-  assert.equal(r.body.reply, 'reply from Qwen/Qwen2.5-7B-Instruct');
-  assert.equal(r.body.model, 'Qwen/Qwen2.5-7B-Instruct');
-  assert.deepEqual(hfCalls.map((c) => c.model), ['bad/model', 'slow/model', 'Qwen/Qwen2.5-7B-Instruct'], 'tried in order and stopped at the first answer');
+  assert.equal(r.body.reply, 'reply from Qwen/Qwen3-4B-Instruct-2507');
+  assert.equal(r.body.model, 'Qwen/Qwen3-4B-Instruct-2507');
+  assert.deepEqual(hfCalls.map((c) => c.model), ['bad/model', 'slow/model', 'Qwen/Qwen3-4B-Instruct-2507'], 'tried in order and stopped at the first answer');
   assert.ok(r.body.ms >= 500, 'waited out the slow model');
 });
 
