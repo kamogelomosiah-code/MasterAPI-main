@@ -30,7 +30,7 @@ function createApp() {
       version: config.version,
       storage: getStore().kind,
       persistent: getStore().kind === 'mongodb',
-      services: { ai: { configured: ai.enabled(), models: ai.enabled() ? config.hfModels : [] }, mail: { configured: mail.enabled() } },
+      services: { ai: { configured: ai.enabled(), models: ai.enabled() ? config.hfModels : [] }, mail: { configured: mail.enabled() }, docs: { pdf: true, docx: true, extract: Object.keys(require('./lib/schemas').SCHEMAS) } },
       warnings: config.warnings,
       uptime: Math.round(process.uptime()),
       time: new Date().toISOString(),
@@ -57,6 +57,7 @@ function createApp() {
   v1.use('/', require('./routes/services'));
   v1.use('/', require('./routes/ai'));
   v1.use('/', require('./routes/mail'));
+  v1.use('/', require('./routes/docs'));
   app.use('/api/v1', v1);
   // Old paths keep working for existing clients.
   app.use('/api/data', requireApp, require('./routes/data'));
@@ -73,7 +74,7 @@ function createApp() {
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
     if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Request body is not valid JSON' });
-    if (err.type === 'entity.too.large') return res.status(413).json({ error: 'Request body is too large (max 5 MB)' });
+    if (err.type === 'entity.too.large') return res.status(413).json({ error: 'The request is too large (JSON up to 5 MB, files up to 10 MB)' });
     if (err instanceof ApiError) return res.status(err.status).json({ error: err.message, ...(err.details ? { details: err.details } : {}) });
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });

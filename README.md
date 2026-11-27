@@ -147,6 +147,18 @@ curl -X POST $API/api/v1/ai/chat -H "X-API-Key: $KEY" -H "Content-Type: applicat
 
 Send `prompt` (or a `messages` list), an optional `system` prompt and earlier turns in `history`. The server tries the models in order (`HF_MODEL`, `HF_MODELS`, then `Qwen/Qwen2.5-7B-Instruct` and `meta-llama/Llama-3.2-3B-Instruct`) and returns the first answer. A model that is missing, slow (25 s) or failing is skipped; a refused token stops at once with a clear message. One request never takes longer than 55 s. Each app gets 20 chats a minute. Only this server holds the Hugging Face token, so your apps never need it. `GET /ai/status` shows whether AI is on and which models are in use.
 
+### Documents: PDF parser and AI extraction
+
+```bash
+# Read a PDF / Word file as text (the file is the raw request body)
+curl -X POST $API/api/v1/docs/parse -H "X-API-Key: $KEY" -H "X-Filename: cv.pdf" --data-binary @cv.pdf
+# Turn it into structured data: schema = resume | statement | receipt, or your own ?fields=invoice_number,due_date
+curl -X POST "$API/api/v1/docs/extract?schema=resume" -H "X-API-Key: $KEY" --data-binary @cv.pdf
+# → { "data": { "name": "…", "skills": […], "experience": […] }, "method": "ai", "warnings": [] }
+```
+
+Files up to 10 MB; the type is detected from the file itself (PDF, `.docx`, text). Scanned PDFs with no text layer are reported with a warning (there is no OCR). Extraction asks the AI service for JSON and cleans the result (dates to `YYYY-MM-DD`, amounts to numbers, bad links dropped). Long bank statements are read in pieces and merged. If AI is off or fails, simple rules still find contact details, links, skills and statement lines, and `method` says `"rules"`. Each app gets `DOCS_PER_MINUTE` (default 20) requests a minute.
+
 ### Contact mail
 
 ```bash

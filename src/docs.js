@@ -40,6 +40,12 @@ module.exports = {
       'GET /api/v1/ai/status — is AI on, and which models',
       'POST /api/v1/ai/chat {prompt | messages, system?, history?, model?, maxTokens?, temperature?} → {reply, model} — tries several Hugging Face models in order',
     ],
+    documents: [
+      'GET /api/v1/docs/status — what can be parsed and which extraction schemas exist',
+      'POST /api/v1/docs/parse — send a PDF, Word (.docx) or text file as the raw body (or JSON {text} / {filename, contentBase64}, up to 10 MB) → {type, pages, chars, text, warnings}',
+      'POST /api/v1/docs/extract?schema=resume|statement|receipt (or ?fields=a,b) — same upload, returns {data, method: "ai"|"rules", warnings}; falls back to simple rules when AI is unavailable',
+      'POST /api/v1/ai/extract {text, schema | fields} — extraction from text you already have',
+    ],
     mail: ['POST /api/v1/mail/contact {name, email, subject?, message} — saves the message (collection contact_messages) and emails the app\'s contact address'],
   },
   webhooks: 'Set webhookUrl on an app to receive POSTs on document.created / updated / deleted. Verify X-MasterAPI-Signature = HMAC-SHA256(body, webhookSecret).',

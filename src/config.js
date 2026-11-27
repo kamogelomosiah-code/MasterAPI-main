@@ -28,6 +28,7 @@ const config = {
   /** Total time one chat request may take across all models. */
   aiDeadlineMs: Number(env.AI_DEADLINE_MS) || 55000,
   aiPerMinute: Number(env.AI_PER_MINUTE) || 20,
+  docsPerMinute: Number(env.DOCS_PER_MINUTE) || 20,
 
   // --- Mail service (Resend, over HTTPS: works on Render's free plan, which blocks SMTP) ---
   resendKey: env.RESEND_API_KEY || '',
